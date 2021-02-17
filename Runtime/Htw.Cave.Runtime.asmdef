@@ -1,0 +1,16 @@
+{
+    "name": "Htw.Cave.Runtime",
+    "references": [
+        "GUID:9a21d24c14dd6d54f881a717660cef63",
+        "GUID:8105b07619a6ceb4992eb62215a19f7f"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

@@ -1,9 +1,9 @@
 {
     "name": "Htw.Cave.Editor",
     "references": [
-        "GUID:2287a3dad6fc5f145a5e01dfce3b75a3"
+        "GUID:2287a3dad6fc5f145a5e01dfce3b75a3",
+        "GUID:9a21d24c14dd6d54f881a717660cef63"
     ],
-    "optionalUnityReferences": [],
     "includePlatforms": [
         "Editor"
     ],
@@ -13,5 +13,6 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": []
+    "versionDefines": [],
+    "noEngineReferences": false
 }

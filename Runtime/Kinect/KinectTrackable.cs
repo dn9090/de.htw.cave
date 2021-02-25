@@ -8,19 +8,52 @@ using Microsoft.Kinect.Face;
 
 namespace Htw.Cave.Kinect
 {
+	/// <summary>
+	/// Base class of a trackable <see cref="GameObject"/>.
+	/// The component retrieves the tracking data from a specific <see cref="KinectActor"/>.
+	/// </summary>
 	public abstract class KinectTrackable : MonoBehaviour
 	{
+		/// <summary>
+		/// Gets whether or not the component is actively tracked or if
+		/// the tracking data is inferred.
+		/// </summary>
 		public TrackingState trackingState => this.m_TrackingState;
+
+		/// <summary>
+		/// The <see cref="KinectActor"/> that is responsible for updating
+		/// the components tracking data.
+		/// </summary>
+		public KinectActor actor => this.m_Actor;
 
 		private TrackingState m_TrackingState;
 
-		public void UpdateTrackingData(in KinectTrackingData trackingData, bool deactivateNotTracked)
+		private KinectActor m_Actor;
+
+		public void Start()
 		{
-			this.m_TrackingState = UpdateTrackingData(in trackingData);
-			gameObject.SetActive(!deactivateNotTracked || this.m_TrackingState != TrackingState.NotTracked);
+			OnTransformParentChanged();
 		}
 
-		protected abstract TrackingState UpdateTrackingData(in KinectTrackingData trackingData);
+		public void OnTransformParentChanged()
+		{
+			if(this.m_Actor != null)
+				this.m_Actor.Untrack(this);
+			
+			if(transform.parent.TryGetComponent<KinectActor>(out KinectActor actor))
+			{
+				this.m_Actor = actor;
+				this.m_Actor.Track(this);
+			}
+		}
+
+		internal void UpdateTrackingData(in KinectFrameBuffer frameBuffer, ref Bounds bounds)
+		{
+			this.m_TrackingState = UpdateTrackingData(in frameBuffer);
+			bounds.Encapsulate(transform.position);
+		}
+
+		protected abstract TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer);
 
 		public static T Create<T>(string name, Transform parent = null) where T : KinectTrackable
 		{

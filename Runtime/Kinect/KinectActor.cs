@@ -9,103 +9,132 @@ using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
-	public readonly struct KinectTrackingData
-	{
-		public readonly Body body;
-
-		public readonly FaceFrameResult face;
-
-		public readonly UnityEngine.Vector4 floor;
-	
-		public readonly UnityEngine.Vector3 coordinateOrigin;
-
-		public KinectTrackingData(Body body, FaceFrameResult face, UnityEngine.Vector4 floor, UnityEngine.Vector3 coordinateOrigin)
-		{
-			this.body = body;
-			this.face = face;
-			this.floor = floor;
-			this.coordinateOrigin = coordinateOrigin;
-		}
-	}
-
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Actor")]
 	public sealed class KinectActor : MonoBehaviour
 	{
+		public event Action<KinectTrackable> onTrack;
+
+		public event Action<KinectTrackable> onUntrack;
+
+		/// <summary>
+		/// The tracking id of the actor which corresponds to a
+		/// tracking id of a body.
+		/// </summary>
 		public ulong trackingId => this.m_TrackingId;
 
-		public bool isTracked => this.m_IsTracked;
+		/// <summary>
+		/// Indicates whether the actor is being tracked.
+		/// </summary>
+		public bool isTracked => this.m_TrackingId > 0;
 
 		/// <summary>
 		/// Gets the amount a body is leaning, which is a number between -1 (leaning left or back)
 		/// and 1 (leaning right or front).
-		/// Leaning left and right corresponds to X movement and leaning back and forwarcorresponds to Y movement.
+		/// Leaning left and right corresponds to X movement and leaning back and forward corresponds to Y movement.
 		/// </summary>
 		public UnityEngine.Vector2 lean => this.m_Lean;
+
+		/// <summary>
+		/// Approximation of the persons height. This is the maximum detected distance
+		/// between the head and the foot joints.
+		/// </summary>
+		public float height => this.m_Height;
+
+		/// <summary>
+		/// The world bounds of the actor.
+		/// </summary>
+		public Bounds bounds => this.m_Bounds;
 
 		/// <summary>
 		/// The time at the creation of the component.
 		/// </summary>
 		public float createdAt => this.m_CreatedAt;
 
-		public bool deactivateNotTracked;
+		/// <summary>
+		/// Set of objects that are tracked and updated by the actor.
+		/// </summary>
+		public ISet<KinectTrackable> trackables => this.m_Trackables;
 
 		private ulong m_TrackingId;
 
-		private bool m_IsTracked;
-
 		private UnityEngine.Vector2 m_Lean;
+
+		private Bounds m_Bounds;
+
+		private HashSet<KinectTrackable> m_Trackables;
 
 		private float m_CreatedAt;
 
-		private KinectTrackable[] m_Trackables;
-
-		private int m_TrackableCount;
+		private float m_Height;
 
 		public void Awake()
 		{
+			this.m_Trackables = new HashSet<KinectTrackable>();
 			this.m_CreatedAt = Time.time;
+		}
+
+		internal void UpdateTrackingId(ulong trackingId) => this.m_TrackingId = trackingId;
+
+		internal void UpdateTrackingData(in KinectFrameBuffer frameBuffer)
+		{
+			transform.localPosition = Vector3.zero;
+
+			RecalculateBounds(in frameBuffer);
+
+			this.m_Lean = frameBuffer.body.LeanDirection();
+			this.m_Height = Mathf.Max(this.m_Height, this.m_Bounds.size.y + 0.1f); // Compensation because the head joint is in the middle of the head.
 			
-			OnTransformChildrenChanged();
-		}
-
-		public void UpdateTrackingState(ulong trackingId, bool isTracked)
-		{
-			this.m_TrackingId = trackingId;
-			this.m_IsTracked = isTracked;
-			gameObject.SetActive(isTracked);
-		}
-
-		public void UpdateTrackingData(in KinectTrackingData trackingData)
-		{
-			this.m_Lean = trackingData.body.LeanDirection();
-
-			for(int i = 0; i < this.m_TrackableCount; ++i)
-				this.m_Trackables[i].UpdateTrackingData(in trackingData, deactivateNotTracked);
-		}
-
-		public void OnTransformChildrenChanged()
-		{
-			if(this.m_Trackables == null || transform.childCount > this.m_Trackables.Length)
-				this.m_Trackables = new KinectTrackable[transform.childCount];
-
-			// @Todo: This can be optimized with a growing capacity and
-			// a comparison which checks if the joint is already in the array.
-
-			this.m_TrackableCount = 0;
+			foreach(var trackable in this.m_Trackables)
+				trackable.UpdateTrackingData(in frameBuffer, ref this.m_Bounds);
+			
+			Vector3 center = new Vector3(this.m_Bounds.center.x, 0f, this.m_Bounds.center.z);
+			Vector3 translation = center - transform.position;
+			transform.position = center;
 
 			for(int i = 0; i < transform.childCount; ++i)
-			{
-				if(transform.GetChild(i).TryGetComponent<KinectTrackable>(out KinectTrackable trackable))
-					this.m_Trackables[this.m_TrackableCount++] = trackable;
-			}
+				transform.GetChild(i).localPosition -= translation;
 		}
 
-		public KinectTrackable[] GetTrackables()
+		internal void Track(KinectTrackable trackable)
 		{
-			var trackables = new KinectTrackable[this.m_TrackableCount];
-			Array.Copy(this.m_Trackables, trackables, this.m_TrackableCount);
+			if(this.m_Trackables.Contains(trackable))
+				return;
+			
+			this.m_Trackables.Add(trackable);
+			this.onTrack?.Invoke(trackable);
+		}
 
-			return trackables; 
+		internal void Untrack(KinectTrackable trackable)
+		{
+			if(!this.m_Trackables.Contains(trackable))
+				return;
+			
+			this.m_Trackables.Remove(trackable);
+			this.onUntrack?.Invoke(trackable);
+		}
+
+		private void RecalculateBounds(in KinectFrameBuffer frameBuffer)
+		{
+			var joint = frameBuffer.joints[JointType.SpineBase];
+
+			this.m_Bounds = new Bounds(joint.JointPositionRealSpace(frameBuffer.floor), Vector3.zero);
+		
+			joint = frameBuffer.joints[JointType.Head];
+
+			if(joint.TrackingState != TrackingState.NotTracked)
+				this.m_Bounds.Encapsulate(joint.JointPositionRealSpace(frameBuffer.floor));
+			
+			joint = frameBuffer.joints[JointType.FootLeft];
+		
+			if(joint.TrackingState != TrackingState.NotTracked)
+				this.m_Bounds.Encapsulate(joint.JointPositionRealSpace(frameBuffer.floor));
+
+			joint = frameBuffer.joints[JointType.FootRight];
+
+			if(joint.TrackingState != TrackingState.NotTracked)
+				this.m_Bounds.Encapsulate(joint.JointPositionRealSpace(frameBuffer.floor));
+		
+			this.m_Bounds.center = transform.TransformPoint(this.m_Bounds.center);
 		}
 
 		public static KinectActor Create(string name, Transform parent, KinectActorConstructionType constructionType, KinectActor prefab = null)

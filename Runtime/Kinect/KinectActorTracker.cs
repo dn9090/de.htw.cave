@@ -24,23 +24,34 @@ namespace Htw.Cave.Kinect
 
 		public event Action<KinectActor> onActorDestroy;
 
+		/// <summary>
+		/// Defines how a <see cref="KinectActor"/> is created when a
+		/// new person is tracked.
+		/// </summary>
 		public KinectActorConstructionType constructionType;
 
+		/// <summary>
+		/// The custom prefab that will be cloned when the <see cref="constructionType"/> 
+		/// is set to <see cref="KinectActorConstructionType.Prefab"/>.
+		/// </summary>
 		public KinectActor prefab;
 
 		private KinectManager m_Manager;
 
 		private KinectActor[] m_Actors;
 
+		private KinectFrameBuffer m_FrameBuffer;
+
 		private int m_ActorCount;
 
-		private TimeSpan m_TimeStamp;
+		private long m_Frame;
 
 		public void Awake()
 		{
 			this.m_Manager = GetComponent<KinectManager>();
 			this.m_Manager.onSensorOpen += PrepareTracking;
 			this.m_Manager.onSensorClose += StopTracking;
+			this.m_FrameBuffer = KinectFrameBuffer.Empty();
 			enabled = false;
 		}
 
@@ -56,6 +67,9 @@ namespace Htw.Cave.Kinect
 
 		public KinectActor[] GetActors()
 		{
+			if(this.m_ActorCount == 0)
+				return Array.Empty<KinectActor>();
+
 			var actors = new KinectActor[this.m_ActorCount];
 			Array.Copy(this.m_Actors, actors, this.m_ActorCount);
 
@@ -75,18 +89,18 @@ namespace Htw.Cave.Kinect
 
 		private void TrackActors()
 		{
-			var timeStamp = this.m_Manager.AcquireFrames(out Body[] bodies, out FaceFrameResult[] faces, out int count);
+			var frame = this.m_Manager.AcquireFrames(out Body[] bodies, out FaceFrameResult[] faces, out int bodyCount);
 
 			// Only update the tracking data if the
 			// acquired frame is new.
-			if(timeStamp > this.m_TimeStamp)
+			if(frame > this.m_Frame)
 			{
-				TrackActors(bodies, faces, count);
-				this.m_TimeStamp = timeStamp;
+				TrackActors(bodies, faces, bodyCount);
+				this.m_Frame = frame;
 			}
 		}
 
-		private void TrackActors(Body[] bodies, FaceFrameResult[] faces, int count)
+		private void TrackActors(Body[] bodies, FaceFrameResult[] faces, int bodyCount)
 		{
 			// According to the book "Beginning Kinect Programming with the Microsoft Kinect SDK"
 			// (even though it is the Kinect v1) we know that:
@@ -107,27 +121,26 @@ namespace Htw.Cave.Kinect
 			for(int i = bufferStart; i < bufferEnd; ++i)
 			{
 				// Update tracking data if the actor tracking id matches the body tracking id.
-				if(bodyIndex < count && bodies[bodyIndex].TrackingId == this.m_Actors[i].trackingId)
+				if(bodyIndex < bodyCount && bodies[bodyIndex].GetTrackingIdFast() == this.m_Actors[i].trackingId)
 				{
-					var data = new KinectTrackingData(bodies[bodyIndex], faces[bodyIndex], this.m_Manager.floor, this.m_Manager.sensorPosition);
-					var actor = this.m_Actors[i];
-					this.m_Actors[this.m_ActorCount++] = actor;
-					actor.UpdateTrackingData(in data);
+					KinectFrameBuffer.Refresh(ref this.m_FrameBuffer, bodies[bodyIndex], faces[bodyIndex], this.m_Manager.floor);
+					this.m_Actors[this.m_ActorCount++] = this.m_Actors[i];
+					this.m_Actors[i].UpdateTrackingData(in this.m_FrameBuffer);
 
 					++bodyIndex;
 					continue;
 				}
 
 				// Destroy actor if no matching tracking id can be found.
-				this.m_Actors[i].UpdateTrackingState(0, false);
+				this.m_Actors[i].UpdateTrackingId(0);
 				this.onActorDestroy?.Invoke(this.m_Actors[i]);
 				Destroy(this.m_Actors[i].gameObject);
 			}
 
 			// Create a new actor for each new tracking id.
-			for(int i = bodyIndex; i < count; ++i)
+			for(int i = bodyIndex; i < bodyCount; ++i)
 			{
-				var actor = CreateActor(bodies[i], faces[i]);
+				var actor = ConstructActor(bodies[i], faces[i]);
 				this.m_Actors[this.m_ActorCount++] = actor;
 				this.onActorCreated?.Invoke(actor);
 			}
@@ -135,14 +148,16 @@ namespace Htw.Cave.Kinect
 			Array.Clear(this.m_Actors, this.m_ActorCount, this.m_Actors.Length - this.m_ActorCount);
 		}
 
-		private KinectActor CreateActor(Body body, FaceFrameResult face)
+		private KinectActor ConstructActor(Body body, FaceFrameResult face)
 		{
-			var name = "Kinect Actor #" + body.TrackingId;
+			var trackingId = body.GetTrackingIdFast();
+			var name = "Kinect Actor #" + trackingId;
 			var actor = KinectActor.Create(name, transform, this.constructionType, this.prefab);
-			var data = new KinectTrackingData(body, face, this.m_Manager.floor, this.m_Manager.sensorPosition);
 			
-			actor.UpdateTrackingState(body.TrackingId, true);
-			actor.UpdateTrackingData(in data);
+			KinectFrameBuffer.Refresh(ref this.m_FrameBuffer, body, face, this.m_Manager.floor);
+			
+			actor.UpdateTrackingId(trackingId);
+			actor.UpdateTrackingData(in this.m_FrameBuffer);
 
 			return actor;
 		}

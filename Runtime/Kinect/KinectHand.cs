@@ -15,13 +15,26 @@ namespace Htw.Cave.Kinect
 		Right
 	}
 
+	/// <summary>
+	/// Represents a hand joint of a tracked <see cref="Body"/>
+	/// and provides access to the <see cref="HandState"/>.
+	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Hand")]
 	public class KinectHand : KinectTrackable
 	{
+		/// <summary>
+		/// Detection result of simple hand gestures.
+		/// </summary>
 		public HandState handState => this.m_HandState;
 
+		/// <summary>
+		/// The confidence of the <see cref="handState"/> detection.
+		/// </summary>
 		public TrackingConfidence handConfidence => this.m_HandConfidence;
 
+		/// <summary>
+		/// Defines the tracked hand.
+		/// </summary>
 		public HandType handType;
 
 		private HandState m_HandState;
@@ -35,34 +48,34 @@ namespace Htw.Cave.Kinect
 			this.m_HandState = HandState.NotTracked;
 		}
 
-		protected override TrackingState UpdateTrackingData(in KinectTrackingData trackingData)
+		protected override TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer)
 		{
 			var jointType = JointType.HandLeft;
 			var forwardJointType = JointType.HandTipLeft;
 
-			this.m_HandState = trackingData.body.HandLeftState;
-			this.m_HandConfidence = trackingData.body.HandLeftConfidence;
+			this.m_HandState = frameBuffer.body.HandLeftState;
+			this.m_HandConfidence = frameBuffer.body.HandLeftConfidence;
 
 			if(this.handType == HandType.Right)
 			{
 				jointType = JointType.HandRight;
 				forwardJointType = JointType.HandTipRight;
 
-				this.m_HandState = trackingData.body.HandRightState;
-				this.m_HandConfidence = trackingData.body.HandRightConfidence;
+				this.m_HandState = frameBuffer.body.HandRightState;
+				this.m_HandConfidence = frameBuffer.body.HandRightConfidence;
 			}
 
-			var joint = trackingData.body.Joints[jointType];
+			var joint = frameBuffer.joints[jointType];
 
 			if(joint.TrackingState != TrackingState.NotTracked)
 			{
-				transform.localPosition = joint.JointPositionRealSpace(trackingData.coordinateOrigin, trackingData.floor);
-				transform.localRotation = trackingData.body.JointOrientations[jointType].JointRotation();
+				transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor);
+				transform.localRotation = frameBuffer.jointOrientations[jointType].JointRotation();
 
-				joint = trackingData.body.Joints[forwardJointType];
+				joint = frameBuffer.joints[forwardJointType];
 
 				// @Todo: Map to local space.
-				transform.forward = (joint.JointPositionRealSpace(trackingData.coordinateOrigin, trackingData.floor) - transform.position).normalized;
+				transform.forward = (joint.JointPositionRealSpace(frameBuffer.floor) - transform.position).normalized;
 			}
 
 			return joint.TrackingState;

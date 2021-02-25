@@ -13,8 +13,8 @@ namespace Htw.Cave.Kinect.Addin
 
 		public void OnPreprocessBuild(BuildReport report)
 		{
-			// moving kinect dlls from package space to assets space
-			// because kinect helpers copy all required dlls from assets space to
+			// Moving Kinect DLL's from the package to the assets folder
+			// because the Kinect helpers copy all required dlls to
 			// the final plugin location.
 			KinectAddinHelper.MovePluginsToAssets();
 			KinectAddinHelper.Import();

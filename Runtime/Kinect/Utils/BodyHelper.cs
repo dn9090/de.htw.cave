@@ -12,6 +12,9 @@ namespace Htw.Cave.Kinect.Utils
 	{
 		public static int SortAndCount(Body[] bodies)
 		{
+			// Null check can be avoided because GetAndRefreshBodyData
+			// internally creates them.
+
 			for(int i = 1; i < bodies.Length; ++i)
 			{
 				var body = bodies[i];
@@ -24,7 +27,7 @@ namespace Htw.Cave.Kinect.Utils
 			}
 
 			for(int i = 0; i < bodies.Length; ++i)
-				if(bodies[i] == null || !bodies[i].IsTracked)
+				if(!bodies[i].GetIsTrackedFast())
 					return i;
 				
 			return bodies.Length;
@@ -32,29 +35,16 @@ namespace Htw.Cave.Kinect.Utils
 
 		public static int Compare(Body a, Body b)
 		{
-			// This is ugly because nowhere in the documentation
-			// is stated which guarantees GetAndRefreshBodyData offers.
-			// So we need to null check everything beforehand.
-
-			if(a == null && b == null)
+			if(!a.GetIsTrackedFast() && !b.GetIsTrackedFast())
 				return 0;
 
-			if(a == null)
+			if(!a.GetIsTrackedFast())
 				return 1;
 
-			if(b == null)
+			if(!b.GetIsTrackedFast())
 				return -1;
 
-			if(!a.IsTracked && !b.IsTracked)
-				return 0;
-
-			if(!a.IsTracked)
-				return 1;
-
-			if(!b.IsTracked)
-				return -1;
-
-			return a.TrackingId.CompareTo(b.TrackingId);
+			return a.GetTrackingIdFast().CompareTo(b.GetTrackingIdFast());
 		}
 	}
 }

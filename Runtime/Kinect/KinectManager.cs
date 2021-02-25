@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using UnityEngine;
 using Windows.Kinect;
 using Microsoft.Kinect.Face;
@@ -9,9 +9,8 @@ using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
-	// @Review: How about running the manager in a separate thread?
-
-	// @Todo: Add frame number (if the threaded thing works).
+	// @Readme: For disconnecting issues: https://social.msdn.microsoft.com/Forums/sqlserver/en-US/bcd775ef-64b0-4e94-8d26-ce297d6d60ea/kinect-v2-keeps-disconnecting-after-every-10-seconds-on-windows-10-1903?forum=kinectv2sdk
+	// If the Kinect v2 is not recognized: https://skarredghost.com/2018/03/01/fix-kinect-v2-not-working-windows-10-creators-update/
 
 	public enum FaceFrameFeatureType
 	{
@@ -19,38 +18,45 @@ namespace Htw.Cave.Kinect
 		Full
 	}
 
-
-	public class KinectReader
-	{
-		public KinectReader(KinectSensor sensor)
-		{
-			
-		}
-
-	}
-
 	/// <summary>
 	/// Provides the required functions to automatically retrieve data
-	/// from the Kinect sensor.
+	/// from the <see cref="KinectSensor"/>.
 	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Manager")]
 	public sealed class KinectManager : MonoBehaviour
 	{
-		public const float FrameTime = 0.33f;
+		private const float FrameTime = 1f / 30f;
 
 		public event Action onSensorOpen;
 
 		public event Action onSensorClose;
 
+		/// <summary>
+		/// Gets the connected <see cref="KinectSensor"/>.
+		/// Can be <c>null</c> if no <see cref="KinectSensor"/> is found.
+		/// </summary>
 		public KinectSensor sensor => this.m_Sensor;
 
+		/// <summary>
+		/// The floor vector converted to <see cref="UnityEngine.Vector4"/>.
+		/// </summary>
 		public UnityEngine.Vector4 floor => this.m_Floor.ToUnityVector4();
 
+		/// <summary>
+		/// The maximum number of <see cref="Body"/> instances the system can track.
+		/// </summary>
 		public int trackingCapacity => this.m_Bodies == null ? 0 : this.m_Bodies.Length;
 
-		public Vector3 sensorPosition;
-
+		/// <summary>
+		/// Defines the feature set of the <see cref="FaceFrameSource"/>.
+		/// </summary>
 		public FaceFrameFeatureType faceFrameFeatureType;
+
+		/// <summary>
+		/// Calculates the tilt of the <see cref="KinectSensor"/> based on
+		/// the <see cref="floor"/>.
+		/// </summary>
+		public float tilt => Mathf.Atan(-floor.z / floor.y) * (180.0f / Mathf.PI);
 
 		private KinectSensor m_Sensor;
 
@@ -60,9 +66,7 @@ namespace Htw.Cave.Kinect
 
 		private Body[] m_Bodies;
 
-		private int m_TrackedBodyCount;
-
-		private TimeSpan m_TimeStamp;
+		private TimeSpan m_RelativeTime;
 
 		private FaceFrameSource[] m_FaceFrameSources;
 
@@ -70,16 +74,23 @@ namespace Htw.Cave.Kinect
 
 		private FaceFrameResult[] m_FaceFrameResults;
 
-		private float m_NextFrameTime;
+		private Stopwatch m_Stopwatch;
+
+		private long m_Frame;
+
+		private int m_TrackedBodyCount;
 
 		public void Start()
 		{
+			this.m_Floor = new Windows.Kinect.Vector4 { X = 1, Y = 1, Z = 1, W = 1};
+			this.m_Stopwatch = new Stopwatch();
+			
 			try
 			{
 				this.m_Sensor = KinectSensor.GetDefault();
 			} catch {
 #if UNITY_EDITOR
-				Debug.LogError("The Kinect v2 SDK was not properly installed.");
+				UnityEngine.Debug.LogError("The Kinect v2 SDK was not properly installed.");
 #endif
 				this.m_Sensor = null;
 			}
@@ -112,33 +123,42 @@ namespace Htw.Cave.Kinect
 			}
 		}
 
-		public void RestartSensor()
+		public long AcquireFrames(out Body[] bodies, out FaceFrameResult[] faceFrames, out int bodyCount)
 		{
-			OnDisable();
-			OnEnable();
-		}
-
-		public TimeSpan AcquireFrames(out Body[] bodies, out FaceFrameResult[] faceFrames, out int count)
-		{
-			if(Time.unscaledTime > this.m_NextFrameTime)
+			if(this.m_Stopwatch.ElapsedMilliseconds > FrameTime)
 			{
 				AcquireBodyFrames();
 				AcquireFaceFrames();
-
-				this.m_NextFrameTime = Time.unscaledTime + FrameTime;
+				
+				this.m_Stopwatch.Restart();
 			}
 
 			bodies = this.m_Bodies;
 			faceFrames = this.m_FaceFrameResults;
-			count = this.m_TrackedBodyCount;
+			bodyCount = this.m_TrackedBodyCount;
 
-			return this.m_TimeStamp;
+			return this.m_Frame;
+		}
+
+		public long ForceAcquireFrames(out Body[] bodies, out FaceFrameResult[] faceFrames, out int bodyCount)
+		{
+			AcquireBodyFrames();
+			AcquireFaceFrames();
+				
+			this.m_Stopwatch.Restart();
+
+			bodies = this.m_Bodies;
+			faceFrames = this.m_FaceFrameResults;
+			bodyCount = this.m_TrackedBodyCount;
+
+			return this.m_Frame;
 		}
 
 		private void OpenSensor()
 		{
 			if(!this.m_Sensor.IsOpen)
 				this.m_Sensor.Open();
+			this.m_Stopwatch.Start();
 		}
 
 		private void CloseSensor()
@@ -146,15 +166,16 @@ namespace Htw.Cave.Kinect
 			if(this.m_Sensor.IsOpen)
 				this.m_Sensor.Close();
 
+			this.m_Stopwatch.Stop();
 			this.m_Sensor = null;
 		}
 
 		private void InitializeBodyReaders()
 		{
-			this.m_MultiSourceFrameReader = this.m_Sensor.OpenMultiSourceFrameReader(
-				FrameSourceTypes.Body |
-				FrameSourceTypes.BodyIndex |
-				FrameSourceTypes.Depth);
+			// If more sources are needed add them with:
+			// this.m_Sensor.OpenMultiSourceFrameReader(FrameSourceTypes.Body | FrameSourceTypes.BodyIndex | FrameSourceTypes.Depth);
+
+			this.m_MultiSourceFrameReader = this.m_Sensor.OpenMultiSourceFrameReader(FrameSourceTypes.Body);
 			this.m_Bodies = new Body[this.m_Sensor.BodyFrameSource.BodyCount];
 		}
 
@@ -197,8 +218,9 @@ namespace Htw.Cave.Kinect
 				bodyFrame.GetAndRefreshBodyData(this.m_Bodies);
 
 				this.m_TrackedBodyCount = BodyHelper.SortAndCount(this.m_Bodies);
-				this.m_TimeStamp = bodyFrame.RelativeTime;
+				this.m_RelativeTime = bodyFrame.RelativeTime;
 				this.m_Floor = bodyFrame.FloorClipPlane;
+				this.m_Frame += 1;
 			}
 
 			// In the documentation the MultiSourceFrame implements IDisposable
@@ -209,9 +231,6 @@ namespace Htw.Cave.Kinect
 
 		private void AcquireFaceFrames()
 		{
-			if(this.m_Bodies == null)
-				return;
-
 			for(int i = 0; i < this.m_TrackedBodyCount; ++i)
 			{
 				this.m_FaceFrameSources[i].TrackingId = this.m_Bodies[i].TrackingId;

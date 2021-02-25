@@ -31,12 +31,12 @@ namespace Htw.Cave.Kinect.Utils
 			(vector.x * point.X + vector.y * point.Y + vector.z * point.Z + vector.w) / (vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Vector3 CameraSpacePointToRealSpace(this CameraSpacePoint point, UnityEngine.Vector3 origin, UnityEngine.Vector4 floor) =>
-			new Vector3(origin.x + point.X, floor.DistanceFromCameraSpacePoint(point), origin.z - point.Z);
+		public static UnityEngine.Vector3 CameraSpacePointToRealSpace(this CameraSpacePoint point, UnityEngine.Vector4 floor) =>
+			new Vector3(point.X, floor.DistanceFromCameraSpacePoint(point), -point.Z);
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Vector3 JointPositionRealSpace(this Windows.Kinect.Joint joint, UnityEngine.Vector3 origin, UnityEngine.Vector4 floor) =>
-			joint.Position.CameraSpacePointToRealSpace(origin, floor);
+		public static UnityEngine.Vector3 JointPositionRealSpace(this Windows.Kinect.Joint joint, UnityEngine.Vector4 floor) =>
+			joint.Position.CameraSpacePointToRealSpace(floor);
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UnityEngine.Quaternion JointRotation(this Windows.Kinect.JointOrientation jointOrientation) =>

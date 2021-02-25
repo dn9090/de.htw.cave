@@ -9,41 +9,52 @@ using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
+	/// <summary>
+	/// Represents the head joint of a tracked <see cref="Body"/>.
+	/// If the head joint is not tracked the position and rotation will
+	/// be inferred from other joints.
+	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Head")]
 	public class KinectHead : KinectTrackable
 	{
+		/// <summary>
+		/// Gets whether or not the tracked person is wearing glasses.
+		/// </summary>
 		public DetectionResult wearingGlasses => this.m_WearingGlasses;
 
 		private DetectionResult m_WearingGlasses;
 
-		protected override TrackingState UpdateTrackingData(in KinectTrackingData trackingData)
+		protected override TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer)
 		{
-			var joint = trackingData.body.Joints[JointType.Head];
+			var joint = frameBuffer.joints[JointType.Head];
 
 			// Use the shoulder positions as fallback if
 			// the head is not tracked.
 			if(joint.TrackingState == TrackingState.NotTracked)
 			{
-				joint = trackingData.body.Joints[JointType.SpineShoulder];
+				joint = frameBuffer.joints[JointType.SpineShoulder];
 
 				if(joint.TrackingState == TrackingState.NotTracked)
 					return TrackingState.NotTracked;
 				
-				transform.localPosition = joint.JointPositionRealSpace(trackingData.coordinateOrigin, trackingData.floor)
+				transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor)
 					+ Vector3.up * 0.3f;
-				transform.localRotation = trackingData.body.JointOrientations[JointType.Head].JointRotation();
+				transform.localRotation = Quaternion.Lerp(
+					frameBuffer.jointOrientations[JointType.ShoulderLeft].JointRotation(),
+					frameBuffer.jointOrientations[JointType.ShoulderRight].JointRotation(),
+					0.5f);
 				
 				return TrackingState.Inferred;
 			}
 
-			transform.localPosition = joint.JointPositionRealSpace(trackingData.coordinateOrigin, trackingData.floor);
+			transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor);
 
-			if(trackingData.face != null)
+			if(frameBuffer.face != null)
 			{
-				transform.localRotation = trackingData.face.FaceRotation();
-				this.m_WearingGlasses = trackingData.face.FaceProperties[FaceProperty.WearingGlasses];
+				transform.localRotation = frameBuffer.face.FaceRotation();
+				this.m_WearingGlasses = frameBuffer.face.FaceProperties[FaceProperty.WearingGlasses];
 			} else {
-				transform.localRotation = trackingData.body.JointOrientations[JointType.Head].JointRotation();
+				transform.localRotation = frameBuffer.jointOrientations[JointType.Head].JointRotation();
 			}
 
 			return joint.TrackingState;

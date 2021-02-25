@@ -9,21 +9,29 @@ using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
+	/// <summary>
+	/// Represents a generic <see cref="Windows.Kinect.Joint"/> of a <see cref="Body"/>.
+	/// The <see cref="transform"/> position and rotation will
+	/// be updated according to the tracked position and rotation of the <see cref="jointType"/>.
+	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Joint")]
 	public class KinectJoint : KinectTrackable
 	{
+		/// <summary>
+		/// Defines the tracked joint.
+		/// </summary>
 		public JointType jointType;
 
-		protected override TrackingState UpdateTrackingData(in KinectTrackingData trackingData)
+		protected override TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer)
 		{
-			var joint = trackingData.body.Joints[jointType];
+			var joint = frameBuffer.joints[jointType];
 
 			if(joint.TrackingState != TrackingState.NotTracked)
 			{
-				transform.localPosition = joint.JointPositionRealSpace(trackingData.coordinateOrigin, trackingData.floor);
-				transform.localRotation = trackingData.body.JointOrientations[jointType].JointRotation();
+				transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor);
+				transform.localRotation = frameBuffer.jointOrientations[jointType].JointRotation();
 			}
-			
+
 			return joint.TrackingState;
 		}
 	}

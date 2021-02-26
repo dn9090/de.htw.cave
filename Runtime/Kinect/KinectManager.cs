@@ -38,9 +38,9 @@ namespace Htw.Cave.Kinect
 		public KinectSensor sensor => this.m_Sensor;
 
 		/// <summary>
-		/// The floor vector converted to <see cref="UnityEngine.Vector4"/>.
+		/// The floor plane vector converted to <see cref="UnityEngine.Vector4"/>.
 		/// </summary>
-		public UnityEngine.Vector4 floor => this.m_Floor.ToUnityVector4();
+		public UnityEngine.Vector4 floorClipPlane => this.m_FloorClipPlane.ToUnityVector4();
 
 		/// <summary>
 		/// The maximum number of <see cref="Body"/> instances the system can track.
@@ -54,13 +54,13 @@ namespace Htw.Cave.Kinect
 
 		/// <summary>
 		/// Calculates the tilt of the <see cref="KinectSensor"/> based on
-		/// the <see cref="floor"/>.
+		/// the <see cref="floorClipPlane"/>.
 		/// </summary>
-		public float tilt => Mathf.Atan(-floor.z / floor.y) * (180.0f / Mathf.PI);
+		public float tilt => Mathf.Atan(-(float)this.m_FloorClipPlane.Z / (float)this.m_FloorClipPlane.Y) * (180.0f / Mathf.PI);
 
 		private KinectSensor m_Sensor;
 
-		private Windows.Kinect.Vector4 m_Floor;
+		private Windows.Kinect.Vector4 m_FloorClipPlane;
 
 		private MultiSourceFrameReader m_MultiSourceFrameReader;
 
@@ -82,7 +82,7 @@ namespace Htw.Cave.Kinect
 
 		public void Start()
 		{
-			this.m_Floor = new Windows.Kinect.Vector4 { X = 1, Y = 1, Z = 1, W = 1};
+			this.m_FloorClipPlane = new Windows.Kinect.Vector4 { X = 1, Y = 1, Z = 1, W = 1};
 			this.m_Stopwatch = new Stopwatch();
 			
 			try
@@ -219,7 +219,7 @@ namespace Htw.Cave.Kinect
 
 				this.m_TrackedBodyCount = BodyHelper.SortAndCount(this.m_Bodies);
 				this.m_RelativeTime = bodyFrame.RelativeTime;
-				this.m_Floor = bodyFrame.FloorClipPlane;
+				this.m_FloorClipPlane = bodyFrame.FloorClipPlane;
 				this.m_Frame += 1;
 			}
 

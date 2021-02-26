@@ -40,7 +40,7 @@ namespace Htw.Cave.Kinect
 
 		private KinectActor[] m_Actors;
 
-		private KinectFrameBuffer m_FrameBuffer;
+		private KinectBodyFrame m_BodyFrame;
 
 		private int m_ActorCount;
 
@@ -51,7 +51,7 @@ namespace Htw.Cave.Kinect
 			this.m_Manager = GetComponent<KinectManager>();
 			this.m_Manager.onSensorOpen += PrepareTracking;
 			this.m_Manager.onSensorClose += StopTracking;
-			this.m_FrameBuffer = KinectFrameBuffer.Empty();
+			this.m_BodyFrame = KinectBodyFrame.Create();
 			enabled = false;
 		}
 
@@ -79,7 +79,7 @@ namespace Htw.Cave.Kinect
 		private void PrepareTracking()
 		{
 			enabled = true;
-			this.m_Actors = new KinectActor[this.m_Manager.trackingCapacity * 2];
+			this.m_Actors = new KinectActor[this.m_Manager.trackingCapacity * 2]; // Allocate double buffer.
 		}
 
 		private void StopTracking()
@@ -102,6 +102,8 @@ namespace Htw.Cave.Kinect
 
 		private void TrackActors(Body[] bodies, FaceFrameResult[] faces, int bodyCount)
 		{
+			var floorClipPlane = this.m_Manager.floorClipPlane;
+
 			// According to the book "Beginning Kinect Programming with the Microsoft Kinect SDK"
 			// (even though it is the Kinect v1) we know that:
 			// "The skeleton tracking engine assigns each skeleton a unique identifier.
@@ -115,6 +117,7 @@ namespace Htw.Cave.Kinect
 			int bufferEnd = bufferStart + this.m_ActorCount;
 			int bodyIndex = 0;
 
+			// Copy the current actors in the backup buffer.
 			Array.Copy(this.m_Actors, 0, this.m_Actors, bufferStart, this.m_ActorCount);
 			this.m_ActorCount = 0;
 
@@ -123,9 +126,9 @@ namespace Htw.Cave.Kinect
 				// Update tracking data if the actor tracking id matches the body tracking id.
 				if(bodyIndex < bodyCount && bodies[bodyIndex].GetTrackingIdFast() == this.m_Actors[i].trackingId)
 				{
-					KinectFrameBuffer.Refresh(ref this.m_FrameBuffer, bodies[bodyIndex], faces[bodyIndex], this.m_Manager.floor);
+					this.m_BodyFrame.RefreshBodyData(bodies[bodyIndex], faces[bodyIndex], floorClipPlane);
 					this.m_Actors[this.m_ActorCount++] = this.m_Actors[i];
-					this.m_Actors[i].UpdateTrackingData(in this.m_FrameBuffer);
+					this.m_Actors[i].UpdateTrackingData(ref this.m_BodyFrame);
 
 					++bodyIndex;
 					continue;
@@ -140,24 +143,25 @@ namespace Htw.Cave.Kinect
 			// Create a new actor for each new tracking id.
 			for(int i = bodyIndex; i < bodyCount; ++i)
 			{
-				var actor = ConstructActor(bodies[i], faces[i]);
+				this.m_BodyFrame.RefreshBodyData(bodies[i], faces[i], floorClipPlane);
+
+				var actor = ConstructActor();
 				this.m_Actors[this.m_ActorCount++] = actor;
+				
+				actor.UpdateTrackingData(ref this.m_BodyFrame);
 				this.onActorCreated?.Invoke(actor);
 			}
 
 			Array.Clear(this.m_Actors, this.m_ActorCount, this.m_Actors.Length - this.m_ActorCount);
 		}
 
-		private KinectActor ConstructActor(Body body, FaceFrameResult face)
+		private KinectActor ConstructActor()
 		{
-			var trackingId = body.GetTrackingIdFast();
+			var trackingId = this.m_BodyFrame.body.GetTrackingIdFast();
 			var name = "Kinect Actor #" + trackingId;
 			var actor = KinectActor.Create(name, transform, this.constructionType, this.prefab);
-			
-			KinectFrameBuffer.Refresh(ref this.m_FrameBuffer, body, face, this.m_Manager.floor);
-			
+
 			actor.UpdateTrackingId(trackingId);
-			actor.UpdateTrackingData(in this.m_FrameBuffer);
 
 			return actor;
 		}

@@ -48,37 +48,37 @@ namespace Htw.Cave.Kinect
 			this.m_HandState = HandState.NotTracked;
 		}
 
-		protected override TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer)
+		protected override TrackingState UpdateTrackingData(ref KinectBodyFrame bodyFrame)
 		{
 			var jointType = JointType.HandLeft;
-			var forwardJointType = JointType.HandTipLeft;
+			//var forwardJointType = JointType.HandTipLeft;
 
-			this.m_HandState = frameBuffer.body.HandLeftState;
-			this.m_HandConfidence = frameBuffer.body.HandLeftConfidence;
+			this.m_HandState = bodyFrame.body.HandLeftState;
+			this.m_HandConfidence = bodyFrame.body.HandLeftConfidence;
 
 			if(this.handType == HandType.Right)
 			{
 				jointType = JointType.HandRight;
-				forwardJointType = JointType.HandTipRight;
+				//forwardJointType = JointType.HandTipRight;
 
-				this.m_HandState = frameBuffer.body.HandRightState;
-				this.m_HandConfidence = frameBuffer.body.HandRightConfidence;
+				this.m_HandState = bodyFrame.body.HandRightState;
+				this.m_HandConfidence = bodyFrame.body.HandRightConfidence;
 			}
 
-			var joint = frameBuffer.joints[jointType];
-
-			if(joint.TrackingState != TrackingState.NotTracked)
+			var joint = bodyFrame[jointType];
+			
+			if(joint.trackingState != TrackingState.NotTracked)
 			{
-				transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor);
-				transform.localRotation = frameBuffer.jointOrientations[jointType].JointRotation();
+				transform.localPosition = joint.position;
+				transform.localRotation = joint.rotation;
 
-				joint = frameBuffer.joints[forwardJointType];
+				//joint = bodyFrame[forwardJointType];
 
 				// @Todo: Map to local space.
-				transform.forward = (joint.JointPositionRealSpace(frameBuffer.floor) - transform.position).normalized;
+				//transform.forward = transform.TransformDirection((joint.position - transform.localPosition).normalized);
 			}
 
-			return joint.TrackingState;
+			return joint.trackingState;
 		}
 	}
 }

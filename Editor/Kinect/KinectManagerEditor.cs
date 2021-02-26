@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEditor;
 using Windows.Kinect;
 using Microsoft.Kinect.Face;
+using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
@@ -61,7 +62,7 @@ namespace Htw.Cave.Kinect
 				return;
 
 			EditorGUILayout.LabelField("Tilt", this.m_Me.tilt.ToString());
-			EditorGUILayout.LabelField("Height Offset", this.m_Me.floor.w.ToString());
+			EditorGUILayout.LabelField("Floor Plane", this.m_Me.floorClipPlane.ToString());
 
 			var frame = this.m_Me.AcquireFrames(out Body[] bodies, out FaceFrameResult[] faces, out int count);
 
@@ -97,10 +98,10 @@ namespace Htw.Cave.Kinect
 			var rotation = transform.rotation;
 			var tilt = manager.tilt;
 
-			transform.position = transform.position + Vector3.up * manager.floor.w;
+			transform.position = transform.position + KinectHelper.SensorFloorPlaneYOffset(manager.floorClipPlane);
 
 			if(tilt != float.NaN)
-				transform.localEulerAngles += new Vector3(tilt, 180f, 0f);
+				transform.localEulerAngles += new Vector3(tilt, 0f, 0f);
 
 			// Kinect v2 FOV: 70.6° x 60°
 			var fov = new Vector2(70.6f, 60f);

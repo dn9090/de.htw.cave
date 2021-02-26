@@ -75,17 +75,17 @@ namespace Htw.Cave.Kinect
 
 		internal void UpdateTrackingId(ulong trackingId) => this.m_TrackingId = trackingId;
 
-		internal void UpdateTrackingData(in KinectFrameBuffer frameBuffer)
+		internal void UpdateTrackingData(ref KinectBodyFrame bodyFrame)
 		{
 			transform.localPosition = Vector3.zero;
 
-			RecalculateBounds(in frameBuffer);
+			RecalculateBounds(ref bodyFrame);
 
-			this.m_Lean = frameBuffer.body.LeanDirection();
+			this.m_Lean = bodyFrame.body.GetLeanDirection();
 			this.m_Height = Mathf.Max(this.m_Height, this.m_Bounds.size.y + 0.1f); // Compensation because the head joint is in the middle of the head.
 			
 			foreach(var trackable in this.m_Trackables)
-				trackable.UpdateTrackingData(in frameBuffer, ref this.m_Bounds);
+				trackable.UpdateTrackingData(ref bodyFrame, ref this.m_Bounds);
 			
 			Vector3 center = new Vector3(this.m_Bounds.center.x, 0f, this.m_Bounds.center.z);
 			Vector3 translation = center - transform.position;
@@ -113,26 +113,26 @@ namespace Htw.Cave.Kinect
 			this.onUntrack?.Invoke(trackable);
 		}
 
-		private void RecalculateBounds(in KinectFrameBuffer frameBuffer)
+		private void RecalculateBounds(ref KinectBodyFrame bodyFrame)
 		{
-			var joint = frameBuffer.joints[JointType.SpineBase];
+			var joint = bodyFrame[JointType.SpineBase];
 
-			this.m_Bounds = new Bounds(joint.JointPositionRealSpace(frameBuffer.floor), Vector3.zero);
+			this.m_Bounds = new Bounds(joint.position, Vector3.zero);
 		
-			joint = frameBuffer.joints[JointType.Head];
+			joint = bodyFrame[JointType.Head];
 
-			if(joint.TrackingState != TrackingState.NotTracked)
-				this.m_Bounds.Encapsulate(joint.JointPositionRealSpace(frameBuffer.floor));
+			if(joint.trackingState != TrackingState.NotTracked)
+				this.m_Bounds.Encapsulate(joint.position);
 			
-			joint = frameBuffer.joints[JointType.FootLeft];
+			joint = bodyFrame[JointType.FootLeft];
 		
-			if(joint.TrackingState != TrackingState.NotTracked)
-				this.m_Bounds.Encapsulate(joint.JointPositionRealSpace(frameBuffer.floor));
+			if(joint.trackingState != TrackingState.NotTracked)
+				this.m_Bounds.Encapsulate(joint.position);
 
-			joint = frameBuffer.joints[JointType.FootRight];
+			joint = bodyFrame[JointType.FootRight];
 
-			if(joint.TrackingState != TrackingState.NotTracked)
-				this.m_Bounds.Encapsulate(joint.JointPositionRealSpace(frameBuffer.floor));
+			if(joint.trackingState != TrackingState.NotTracked)
+				this.m_Bounds.Encapsulate(joint.position);
 		
 			this.m_Bounds.center = transform.TransformPoint(this.m_Bounds.center);
 		}
@@ -170,7 +170,7 @@ namespace Htw.Cave.Kinect
 					default:
 						if(constructionType == KinectActorConstructionType.Full)
 						{
-							KinectTrackable.Create<KinectJoint>("Kinect Joint", gameObject.transform)
+							KinectTrackable.Create<KinectDynamicJoint>("Kinect Dynamic Joint (" + jointType + ")", gameObject.transform)
 								.jointType = jointType;
 						}
 						break;

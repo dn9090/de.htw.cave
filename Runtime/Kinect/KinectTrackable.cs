@@ -47,13 +47,13 @@ namespace Htw.Cave.Kinect
 			}
 		}
 
-		internal void UpdateTrackingData(in KinectFrameBuffer frameBuffer, ref Bounds bounds)
+		internal void UpdateTrackingData(ref KinectBodyFrame bodyFrame, ref Bounds bounds)
 		{
-			this.m_TrackingState = UpdateTrackingData(in frameBuffer);
+			this.m_TrackingState = UpdateTrackingData(ref bodyFrame);
 			bounds.Encapsulate(transform.position);
 		}
 
-		protected abstract TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer);
+		protected abstract TrackingState UpdateTrackingData(ref KinectBodyFrame bodyFrame);
 
 		public static T Create<T>(string name, Transform parent = null) where T : KinectTrackable
 		{

@@ -24,40 +24,44 @@ namespace Htw.Cave.Kinect
 
 		private DetectionResult m_WearingGlasses;
 
-		protected override TrackingState UpdateTrackingData(in KinectFrameBuffer frameBuffer)
+		protected override TrackingState UpdateTrackingData(ref KinectBodyFrame bodyFrame)
 		{
-			var joint = frameBuffer.joints[JointType.Head];
+			var joint = bodyFrame[JointType.Head];
 
 			// Use the shoulder positions as fallback if
 			// the head is not tracked.
-			if(joint.TrackingState == TrackingState.NotTracked)
+			if(joint.trackingState == TrackingState.NotTracked)
 			{
-				joint = frameBuffer.joints[JointType.SpineShoulder];
+				joint = bodyFrame[JointType.SpineShoulder];
 
-				if(joint.TrackingState == TrackingState.NotTracked)
+				if(joint.trackingState == TrackingState.NotTracked)
 					return TrackingState.NotTracked;
 				
-				transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor)
-					+ Vector3.up * 0.3f;
+				transform.localPosition = joint.position + Vector3.up * 0.25f;
 				transform.localRotation = Quaternion.Lerp(
-					frameBuffer.jointOrientations[JointType.ShoulderLeft].JointRotation(),
-					frameBuffer.jointOrientations[JointType.ShoulderRight].JointRotation(),
+					bodyFrame[JointType.ShoulderLeft].rotation,
+					bodyFrame[JointType.ShoulderRight].rotation,
 					0.5f);
-				
+
 				return TrackingState.Inferred;
 			}
 
-			transform.localPosition = joint.JointPositionRealSpace(frameBuffer.floor);
+			transform.localPosition = joint.position;
+			transform.localRotation = joint.rotation;
+			transform.localEulerAngles += Vector3.right * 90f;
 
-			if(frameBuffer.face != null)
+			/*
+			For some reason nothing will work...
+			(github.com/igentuman, ExtractFaceRotationInDegrees)
+
+			if(bodyFrame.face != null)
 			{
-				transform.localRotation = frameBuffer.face.FaceRotation();
-				this.m_WearingGlasses = frameBuffer.face.FaceProperties[FaceProperty.WearingGlasses];
-			} else {
-				transform.localRotation = frameBuffer.jointOrientations[JointType.Head].JointRotation();
+				transform.localRotation = bodyFrame.face.GetFaceRotation();
+				this.m_WearingGlasses = bodyFrame.face.FaceProperties[FaceProperty.WearingGlasses];
 			}
+			*/
 
-			return joint.TrackingState;
+			return joint.trackingState;
 		}
 	}
 }

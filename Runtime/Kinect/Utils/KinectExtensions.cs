@@ -23,31 +23,24 @@ namespace Htw.Cave.Kinect.Utils
 			new UnityEngine.Quaternion(vector.X, vector.Y, vector.Z, vector.W);
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Quaternion LeftHanded(this UnityEngine.Quaternion quaternion) =>
-			new Quaternion(-quaternion.x, -quaternion.y, quaternion.z, quaternion.w);
+		public static bool IsZero(this UnityEngine.Quaternion quaternion) =>
+			(quaternion.x + quaternion.y + quaternion.z + quaternion.w) == 0f;
+
+		public static bool IsZero(this UnityEngine.Vector3 vector) =>
+			(vector.x + vector.y + vector.z) == 0f;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static float DistanceFromCameraSpacePoint(this UnityEngine.Vector4 vector, CameraSpacePoint point) =>
-			(vector.x * point.X + vector.y * point.Y + vector.z * point.Z + vector.w) / (vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+		public static UnityEngine.Quaternion GetFaceRotation(this FaceFrameResult face)
+		{
+			var quaternion = face.FaceRotationQuaternion.ToUnityQuaternion();
+			return new Quaternion(-quaternion.x, -quaternion.y, quaternion.z, quaternion.w);
+		}	
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Vector3 CameraSpacePointToRealSpace(this CameraSpacePoint point, UnityEngine.Vector4 floor) =>
-			new Vector3(point.X, floor.DistanceFromCameraSpacePoint(point), -point.Z);
-		
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Vector3 JointPositionRealSpace(this Windows.Kinect.Joint joint, UnityEngine.Vector4 floor) =>
-			joint.Position.CameraSpacePointToRealSpace(floor);
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Quaternion JointRotation(this Windows.Kinect.JointOrientation jointOrientation) =>
-			jointOrientation.Orientation.ToUnityQuaternion().LeftHanded();
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Quaternion FaceRotation(this FaceFrameResult face) =>
-			face.FaceRotationQuaternion.ToUnityQuaternion().LeftHanded();
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Vector2 LeanDirection(this Body body) =>
-			new UnityEngine.Vector2((float)body.Lean.X, (float)body.Lean.Y);
+		public static UnityEngine.Vector2 GetLeanDirection(this Body body)
+		{
+			var lean = body.Lean; // Store it to avoid one additional native call.
+			return new UnityEngine.Vector2((float)lean.X, (float)lean.Y);
+		}
 	}
 }

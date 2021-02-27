@@ -24,6 +24,7 @@ namespace Windows.Kinect
 					throw new ObjectDisposedException("Body");
 
 				_trackingIdCache = TrackingId;
+				_isTrackedCache = IsTracked;
 			}
 
 			return _trackingIdCache;
@@ -36,6 +37,7 @@ namespace Windows.Kinect
 				if(_pNative == IntPtr.Zero)
 					throw new ObjectDisposedException("Body");
 
+				_trackingIdCache = TrackingId;
 				_isTrackedCache = IsTracked;
 			}
 

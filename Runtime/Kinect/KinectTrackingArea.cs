@@ -2,12 +2,33 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
 	internal class LongestTimeTrackedComparer : IComparer<KinectActor>
 	{
 		public int Compare(KinectActor x, KinectActor y) => x.createdAt > y.createdAt ? 1 : -1;
+	}
+
+	internal class SensorDistanceComparer : IComparer<KinectActor>
+	{
+		private KinectManager m_Manager;
+
+		public SensorDistanceComparer(KinectManager manager)
+		{
+			this.m_Manager = manager;
+		}
+
+		public int Compare(KinectActor x, KinectActor y)
+		{
+			Vector3 position = this.m_Manager.transform.position + KinectHelper.SensorFloorPlaneYOffset(this.m_Manager.floorClipPlane);
+
+			var distanceX = (position - x.bounds.center).sqrMagnitude;
+			var distanceY = (position - y.bounds.center).sqrMagnitude;
+			
+			return distanceX > distanceY ? -1 : 1;
+		}
 	}
 
 	internal class TrackingAreaDistanceComparer : IComparer<KinectActor>
@@ -49,9 +70,12 @@ namespace Htw.Cave.Kinect
 			set => SetComparer(value);
 		}
 
+		public Bounds volume => this.m_Volume;
+
 		public KinectActorTracker actorTracker;
 
-		public Bounds volume;
+		[SerializeField]
+		public Bounds m_Volume;
 
 		[SerializeField]
 		private KinectActorSelectionType m_SelectionType;
@@ -99,10 +123,10 @@ namespace Htw.Cave.Kinect
 
 		public void Reset()
 		{
-			this.volume = new Bounds(Vector3.zero, new Vector3(2f, 1f, 2f));
+			this.m_Volume = new Bounds(Vector3.zero, new Vector3(2f, 1f, 2f));
 		}
 
-		public Bounds GetVolumeWorldSpace() =>  new Bounds(transform.TransformPoint(this.volume.center), this.volume.size);
+		public Bounds GetVolumeWorldSpace() =>  new Bounds(transform.TransformPoint(this.m_Volume.center), this.m_Volume.size);
 
 		private void ActorCreated(KinectActor actor)
 		{
@@ -133,6 +157,10 @@ namespace Htw.Cave.Kinect
 					break;
 				case KinectActorSelectionType.ClosestToMid:
 					this.m_Comparer = new TrackingAreaDistanceComparer(this);
+					this.m_ComparerNeedsRegularUpdate = true;
+					break;
+				case KinectActorSelectionType.ClosestToSensor:
+					this.m_Comparer = new SensorDistanceComparer(this.actorTracker.GetComponent<KinectManager>());
 					this.m_ComparerNeedsRegularUpdate = true;
 					break;
 				default:

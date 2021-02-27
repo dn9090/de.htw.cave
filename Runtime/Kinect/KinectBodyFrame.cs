@@ -11,17 +11,25 @@ namespace Htw.Cave.Kinect
 {
 	public struct KinectBodyFrame
 	{
+		public KinectJoint this[JointType jointType] => this.joints[(int)jointType];
+
+		public ulong trackingId => this.m_TrackingId;
+
+		public Vector2 lean => this.m_Lean;
+
 		public Body body;
 
 		public FaceFrameResult face;
 
 		public KinectJoint[] joints;
 
-		public KinectJoint this[JointType jointType] => this.joints[(int)jointType];
-
 		private Dictionary<JointType, Windows.Kinect.Joint> m_Joints;
 
 		private Dictionary<JointType, JointOrientation> m_JointOrientations;
+
+		private ulong m_TrackingId;
+
+		private Vector2 m_Lean;
 
 		public static KinectBodyFrame Create() => new KinectBodyFrame(25);
 
@@ -32,6 +40,8 @@ namespace Htw.Cave.Kinect
 			this.joints = new KinectJoint[capacity];
 			this.m_Joints = new Dictionary<JointType, Windows.Kinect.Joint>(capacity);
 			this.m_JointOrientations = new Dictionary<JointType, JointOrientation>(capacity);
+			this.m_TrackingId = 0;
+			this.m_Lean = Vector2.zero;
 		}
 
 		public void RefreshBodyData(Body body, FaceFrameResult face, UnityEngine.Vector4 floorClipPlane)
@@ -41,6 +51,8 @@ namespace Htw.Cave.Kinect
 			this.body.RefreshJointsFast(this.m_Joints);
 			this.body.RefreshJointOrientationsFast(this.m_JointOrientations);
 			KinectJoint.RefreshJointData(this.joints, floorClipPlane, this.m_Joints, this.m_JointOrientations);
+			this.m_TrackingId = this.body.GetTrackingIdFast();
+			this.m_Lean = this.body.GetLeanDirection();
 		}
 	}
 

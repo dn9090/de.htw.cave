@@ -30,11 +30,7 @@ namespace Htw.Cave.Kinect
 
 		public override void OnInspectorGUI()
 		{
-			EditorGUI.BeginChangeCheck();
-
 			EditorGUILayout.LabelField("Wearing Glasses", s_WearingGlasses[(int)this.m_Me.wearingGlasses]);
-
-			EditorGUI.EndChangeCheck();
 		}
 
 		[DrawGizmo(GizmoType.Active | GizmoType.Selected | GizmoType.InSelectionHierarchy)]

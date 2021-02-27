@@ -16,6 +16,12 @@ namespace Htw.Cave.Kinect
 		Prefab
 	}
 
+	/// <summary>
+	/// This component can be attached to the <see cref="KinectManager"/>
+	/// and is responsible for creating <see cref="KinectActor"/> instances
+	/// for each tracked person. The <see cref="KinectActor"/> instances
+	/// are constructed according to <see cref="constructionType"/>.
+	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Actor Tracker")]
 	[RequireComponent(typeof(KinectManager))]
 	public sealed class KinectActorTracker : MonoBehaviour
@@ -40,8 +46,6 @@ namespace Htw.Cave.Kinect
 
 		private KinectActor[] m_Actors;
 
-		private KinectBodyFrame m_BodyFrame;
-
 		private int m_ActorCount;
 
 		private long m_Frame;
@@ -51,7 +55,6 @@ namespace Htw.Cave.Kinect
 			this.m_Manager = GetComponent<KinectManager>();
 			this.m_Manager.onSensorOpen += PrepareTracking;
 			this.m_Manager.onSensorClose += StopTracking;
-			this.m_BodyFrame = KinectBodyFrame.Create();
 			enabled = false;
 		}
 
@@ -126,16 +129,14 @@ namespace Htw.Cave.Kinect
 				// Update tracking data if the actor tracking id matches the body tracking id.
 				if(bodyIndex < bodyCount && bodies[bodyIndex].GetTrackingIdFast() == this.m_Actors[i].trackingId)
 				{
-					this.m_BodyFrame.RefreshBodyData(bodies[bodyIndex], faces[bodyIndex], floorClipPlane);
 					this.m_Actors[this.m_ActorCount++] = this.m_Actors[i];
-					this.m_Actors[i].UpdateTrackingData(ref this.m_BodyFrame);
+					this.m_Actors[i].UpdateTrackingData(bodies[bodyIndex], faces[bodyIndex], floorClipPlane);
 
 					++bodyIndex;
 					continue;
 				}
 
 				// Destroy actor if no matching tracking id can be found.
-				this.m_Actors[i].UpdateTrackingId(0);
 				this.onActorDestroy?.Invoke(this.m_Actors[i]);
 				Destroy(this.m_Actors[i].gameObject);
 			}
@@ -143,25 +144,20 @@ namespace Htw.Cave.Kinect
 			// Create a new actor for each new tracking id.
 			for(int i = bodyIndex; i < bodyCount; ++i)
 			{
-				this.m_BodyFrame.RefreshBodyData(bodies[i], faces[i], floorClipPlane);
-
-				var actor = ConstructActor();
+				var actor = ConstructActor(bodies[i].GetTrackingIdFast());
 				this.m_Actors[this.m_ActorCount++] = actor;
 				
-				actor.UpdateTrackingData(ref this.m_BodyFrame);
+				actor.UpdateTrackingData(bodies[i], faces[i], floorClipPlane);
 				this.onActorCreated?.Invoke(actor);
 			}
 
 			Array.Clear(this.m_Actors, this.m_ActorCount, this.m_Actors.Length - this.m_ActorCount);
 		}
 
-		private KinectActor ConstructActor()
+		private KinectActor ConstructActor(ulong trackingId)
 		{
-			var trackingId = this.m_BodyFrame.body.GetTrackingIdFast();
 			var name = "Kinect Actor #" + trackingId;
 			var actor = KinectActor.Create(name, transform, this.constructionType, this.prefab);
-
-			actor.UpdateTrackingId(trackingId);
 
 			return actor;
 		}

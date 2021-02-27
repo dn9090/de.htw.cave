@@ -50,16 +50,13 @@ namespace Htw.Cave.Kinect
 			transform.localRotation = joint.rotation;
 			transform.localEulerAngles += Vector3.right * 90f;
 
-			/*
-			For some reason nothing will work...
-			(github.com/igentuman, ExtractFaceRotationInDegrees)
-
 			if(bodyFrame.face != null)
 			{
-				transform.localRotation = bodyFrame.face.GetFaceRotation();
+				// For some reason nothing will work...
+				// (github.com/igentuman, ExtractFaceRotationInDegrees)
+				// transform.localRotation = bodyFrame.face.GetFaceRotation();
 				this.m_WearingGlasses = bodyFrame.face.FaceProperties[FaceProperty.WearingGlasses];
 			}
-			*/
 
 			return joint.trackingState;
 		}

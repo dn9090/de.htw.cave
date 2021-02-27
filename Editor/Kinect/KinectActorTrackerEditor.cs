@@ -33,8 +33,7 @@ namespace Htw.Cave.Kinect
 
 				if(this.m_Me.prefab == null)
 					EditorGUILayout.HelpBox("Select a custom Prefab that will be instantiated if a new person is tracked.", MessageType.Info);
-			}
-				
+			}	
 
 			serializedObject.ApplyModifiedProperties();
 			EditorGUI.EndChangeCheck();

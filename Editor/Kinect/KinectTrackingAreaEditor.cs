@@ -19,7 +19,7 @@ namespace Htw.Cave.Kinect
 		{
 			this.m_Me = (KinectTrackingArea)target;
 			this.m_ActorTrackerProperty = serializedObject.FindProperty("actorTracker");
-			this.m_VolumeProperty = serializedObject.FindProperty("volume");
+			this.m_VolumeProperty = serializedObject.FindProperty("m_Volume");
 			this.m_SelectionTypeProperty = serializedObject.FindProperty("m_SelectionType");
 		}
 

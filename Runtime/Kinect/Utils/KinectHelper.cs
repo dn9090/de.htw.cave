@@ -8,6 +8,10 @@ using UnityEngine;
 
 namespace Htw.Cave.Kinect.Utils
 {
+	/// <summary>
+	/// Contains helper functions for processing Kinect v2
+	/// coordinate mappings and joint transforms.
+	/// </summary>
 	public static class KinectHelper
 	{
 		public static readonly JointType[] parentJointTypes = {

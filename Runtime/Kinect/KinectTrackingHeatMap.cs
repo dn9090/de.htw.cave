@@ -8,29 +8,32 @@ using Microsoft.Kinect.Face;
 
 namespace Htw.Cave.Kinect
 {
-	[AddComponentMenu("Htw.Cave/Kinect/Visualizer/Kinect Tracking Heat Map")]
-	[RequireComponent(typeof(KinectManager))]
+	/// <summary>
+	/// The component allows the visual representation of
+	/// the tracking quality in different areas.
+	/// Needs to be attached to a <see cref="KinectTrackingArea"/>.
+	/// </summary>
+	[AddComponentMenu("Htw.Cave/Kinect/Kinect Tracking Heat Map")]
+	[RequireComponent(typeof(KinectTrackingArea))]
 	public sealed class KinectTrackingHeatMap : MonoBehaviour
 	{
 		[SerializeField]
-		private Vector2 gridDimensions;
+		private float m_GridSize;
 
-		[SerializeField]
-		private float gridSize;
+		private KinectTrackingArea m_TrackingArea;
 
-		public void Start()
+		private Rect m_GridArea;
+
+		public void Awake()
 		{
+			this.m_TrackingArea = GetComponent<KinectTrackingArea>();
+			var size = this.m_TrackingArea.volume.size;
+			this.m_GridArea = new Rect(Vector2.zero, new Vector3(size.x, size.z));
 		}
 
 		public void Reset()
 		{
-			this.gridDimensions = new Vector2(3f, 3f);
-			this.gridSize = 0.25f;
-		}
-
-		public void OnValidate()
-		{
-			this.gridSize = Mathf.Clamp(gridSize, 0f, Mathf.Min(gridDimensions.x, gridDimensions.y));
+			this.m_GridSize = 0.25f;
 		}
 	}
 }

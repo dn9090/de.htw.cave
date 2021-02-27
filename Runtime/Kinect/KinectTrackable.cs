@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using Windows.Kinect;
 using Microsoft.Kinect.Face;
+using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
@@ -14,6 +15,12 @@ namespace Htw.Cave.Kinect
 	/// </summary>
 	public abstract class KinectTrackable : MonoBehaviour
 	{
+		/// <summary>
+		/// Defines the parameters that are used by the filter
+		/// when <see cref="filterPositionAndRotation"/> is set.
+		/// </summary>
+		public static OneEuroParams filterParams = new OneEuroParams(1f); 
+
 		/// <summary>
 		/// Gets whether or not the component is actively tracked or if
 		/// the tracking data is inferred.
@@ -26,9 +33,19 @@ namespace Htw.Cave.Kinect
 		/// </summary>
 		public KinectActor actor => this.m_Actor;
 
+		/// <summary>
+		/// Defines if the tracking data is filtered before updating
+		/// the <see cref="transform.position"/> and <see cref="transform.rotation"/>.
+		/// </summary>
+		public bool filterPositionAndRotation;
+
 		private TrackingState m_TrackingState;
 
 		private KinectActor m_Actor;
+
+		private OneEuroFilter3 m_PositionFilter;
+
+		private OneEuroFilter4 m_RotationFilter;
 
 		public void Start()
 		{
@@ -50,17 +67,27 @@ namespace Htw.Cave.Kinect
 		internal void UpdateTrackingData(ref KinectBodyFrame bodyFrame, ref Bounds bounds)
 		{
 			this.m_TrackingState = UpdateTrackingData(ref bodyFrame);
+
+			if(this.filterPositionAndRotation)
+			{
+				transform.localPosition = this.m_PositionFilter.Filter(transform.localPosition, 30f, in filterParams);
+				transform.localRotation = this.m_RotationFilter.Filter(transform.localRotation, 30f, in filterParams);
+			}
+
 			bounds.Encapsulate(transform.position);
 		}
 
 		protected abstract TrackingState UpdateTrackingData(ref KinectBodyFrame bodyFrame);
 
-		public static T Create<T>(string name, Transform parent = null) where T : KinectTrackable
+		public static T Create<T>(string name, Transform parent = null, Action<T> action = null) where T : KinectTrackable
 		{
 			GameObject gameObject = new GameObject(name);
 			gameObject.transform.parent = parent;
 			
-			return gameObject.AddComponent<T>();
+			var component = gameObject.AddComponent<T>();
+			action?.Invoke(component);
+			
+			return component;
 		}
 	}
 }

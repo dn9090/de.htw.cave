@@ -9,6 +9,13 @@ using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
+	/// <summary>
+	/// Holds the tracking data of a <see cref="Windows.Kinect.Body"/> and
+	/// the associated <see cref="Microsoft.Kinect.Face"/>.
+	/// The transformed and processed joint data can be accessed
+	/// via the <see cref="KinectBodyFrame.joints"/> array or with the
+	/// index accessor.
+	/// </summary>
 	public struct KinectBodyFrame
 	{
 		public KinectJoint this[JointType jointType] => this.joints[(int)jointType];
@@ -33,7 +40,7 @@ namespace Htw.Cave.Kinect
 
 		public static KinectBodyFrame Create() => new KinectBodyFrame(25);
 
-		private KinectBodyFrame(int capacity)
+		public KinectBodyFrame(int capacity)
 		{
 			this.body = null;
 			this.face = null;
@@ -56,6 +63,9 @@ namespace Htw.Cave.Kinect
 		}
 	}
 
+	/// <summary>
+	/// Contains the tracking data of a specific <see cref="Windows.Kinect.JointType"/>.
+	/// </summary>
 	public readonly struct KinectJoint
 	{
 		public readonly Vector3 position;

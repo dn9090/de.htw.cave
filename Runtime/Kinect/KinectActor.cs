@@ -155,31 +155,26 @@ namespace Htw.Cave.Kinect
 			var gameObject = new GameObject(name);
 			gameObject.transform.parent = parent;
 
-			foreach(var value in Enum.GetValues(typeof(JointType))) // @Todo: This can be hard-coded in the future.
+			if(constructionType == KinectActorConstructionType.Basic || constructionType == KinectActorConstructionType.Full)
 			{
-				var jointType = (JointType)value;
+				KinectTrackable.Create<KinectHead>("Kinect Head", gameObject.transform);
+				KinectTrackable.Create<KinectHand>("Kinect Hand Left", gameObject.transform,
+					(trackable) => { trackable.handType = HandType.Left; });
+				KinectTrackable.Create<KinectHand>("Kinect Hand Right", gameObject.transform,
+					(trackable) => { trackable.handType = HandType.Right; });
 
-				switch(jointType)
-				{
-					case JointType.Head:
-						KinectTrackable.Create<KinectHead>("Kinect Head", gameObject.transform);
-						break;
-					case JointType.HandLeft:
-						KinectTrackable.Create<KinectHand>("Kinect Hand Left", gameObject.transform,
-							(trackable) => { trackable.handType = HandType.Left; });
-						break;
-					case JointType.HandRight:
-						KinectTrackable.Create<KinectHand>("Kinect Hand Right", gameObject.transform,
-							(trackable) => { trackable.handType = HandType.Right; });
-						break;
-					default:
-						if(constructionType == KinectActorConstructionType.Full)
-						{
-							KinectTrackable.Create<KinectDynamicJoint>("Kinect Dynamic Joint (" + jointType + ")", gameObject.transform,
-								(trackable) => { trackable.jointType = jointType; });
-						}
-						break;
-				}		
+				KinectDynamicJoint.Create(PredefinedJointTypes.head.Where(jointType => jointType != JointType.Head).ToArray(), gameObject.transform);
+				KinectDynamicJoint.Create(PredefinedJointTypes.handLeft.Where(jointType => jointType != JointType.HandLeft).ToArray(), gameObject.transform);
+				KinectDynamicJoint.Create(PredefinedJointTypes.handRight.Where(jointType => jointType != JointType.HandRight).ToArray(), gameObject.transform);
+			}
+			
+			if(constructionType == KinectActorConstructionType.Full)
+			{
+				KinectDynamicJoint.Create(PredefinedJointTypes.torso, gameObject.transform);
+				KinectDynamicJoint.Create(PredefinedJointTypes.legLeft, gameObject.transform);
+				KinectDynamicJoint.Create(PredefinedJointTypes.legRight, gameObject.transform);
+				KinectDynamicJoint.Create(PredefinedJointTypes.armLeft, gameObject.transform);
+				KinectDynamicJoint.Create(PredefinedJointTypes.armRight, gameObject.transform);
 			}
 
 			return gameObject.AddComponent<KinectActor>();

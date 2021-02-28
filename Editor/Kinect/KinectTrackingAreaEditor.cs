@@ -21,6 +21,13 @@ namespace Htw.Cave.Kinect
 			this.m_ActorTrackerProperty = serializedObject.FindProperty("actorTracker");
 			this.m_VolumeProperty = serializedObject.FindProperty("m_Volume");
 			this.m_SelectionTypeProperty = serializedObject.FindProperty("m_SelectionType");
+
+			this.m_Me.onActorChanged += UpdateActor;
+		}
+
+		public void OnDisable()
+		{
+			this.m_Me.onActorChanged -= UpdateActor;
 		}
 
 		public override void OnInspectorGUI()
@@ -34,6 +41,19 @@ namespace Htw.Cave.Kinect
 
 			serializedObject.ApplyModifiedProperties();
 			EditorGUI.EndChangeCheck();
+
+			if(Application.isPlaying)
+			{
+				if(this.m_Me.actor == null)
+					EditorGUILayout.LabelField("No main actor available.");
+				else
+					EditorGUILayout.LabelField("Main Actor", this.m_Me.actor.trackingId.ToString());
+			}
+		}
+
+		private void UpdateActor(KinectActor actor)
+		{
+			Repaint();
 		}
 
 		[DrawGizmo(GizmoType.Active | GizmoType.Selected)]

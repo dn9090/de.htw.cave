@@ -42,5 +42,26 @@ namespace Htw.Cave.Kinect.Utils
 			var lean = body.Lean; // Store it to avoid one additional native call.
 			return new UnityEngine.Vector2((float)lean.X, (float)lean.Y);
 		}
+
+		public static string MakeHumanReadable(this JointType jointType)
+		{
+			string name = jointType.ToString();
+			string result = "";
+			int lastIndex = 0;
+
+			for(int i = 1; i < name.Length; ++i)
+			{
+				if(char.IsUpper(name[i]))
+				{
+					result += name.Substring(lastIndex, i - lastIndex) + " ";
+					lastIndex = i;
+				}
+			}
+
+			if(lastIndex < name.Length - 1)
+				result += name.Substring(lastIndex, name.Length - lastIndex);
+
+			return result;
+		}
 	}
 }

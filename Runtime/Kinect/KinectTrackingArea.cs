@@ -75,7 +75,7 @@ namespace Htw.Cave.Kinect
 		public KinectActorTracker actorTracker;
 
 		[SerializeField]
-		public Bounds m_Volume;
+		private Bounds m_Volume;
 
 		[SerializeField]
 		private KinectActorSelectionType m_SelectionType;
@@ -100,17 +100,23 @@ namespace Htw.Cave.Kinect
 
 		public void OnEnable()
 		{
-			this.m_Actors.Clear();
-			this.m_Actors.AddRange(this.actorTracker.GetActors());
+			if(actorTracker != null)
+			{
+				this.m_Actors.Clear();
+				this.m_Actors.AddRange(this.actorTracker.GetActors());
 
-			actorTracker.onActorCreated += ActorCreated;
-			actorTracker.onActorDestroy += ActorDestroy;
+				actorTracker.onActorCreated += ActorCreated;
+				actorTracker.onActorDestroy += ActorDestroy;
+			}
 		}
 
 		public void OnDisable()
 		{
-			actorTracker.onActorCreated -= ActorCreated;
-			actorTracker.onActorDestroy -= ActorDestroy;
+			if(actorTracker != null)
+			{
+				actorTracker.onActorCreated -= ActorCreated;
+				actorTracker.onActorDestroy -= ActorDestroy;
+			}
 		}
 
 		public void Update()
@@ -123,7 +129,7 @@ namespace Htw.Cave.Kinect
 
 		public void Reset()
 		{
-			this.m_Volume = new Bounds(Vector3.zero, new Vector3(2f, 1f, 2f));
+			this.m_Volume = new Bounds(Vector3.up, new Vector3(3f, 2f, 3f));
 		}
 
 		public Bounds GetVolumeWorldSpace() =>  new Bounds(transform.TransformPoint(this.m_Volume.center), this.m_Volume.size);

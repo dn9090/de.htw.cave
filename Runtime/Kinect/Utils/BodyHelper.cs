@@ -13,7 +13,7 @@ namespace Htw.Cave.Kinect.Utils
 		public static int SortAndCount(Body[] bodies)
 		{
 			// Null check can be avoided because GetAndRefreshBodyData
-			// internally creates them.
+			// internally creates bodies that are null.
 
 			for(int i = 1; i < bodies.Length; ++i)
 			{

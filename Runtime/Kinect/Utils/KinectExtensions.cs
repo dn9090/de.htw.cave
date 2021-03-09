@@ -26,15 +26,13 @@ namespace Htw.Cave.Kinect.Utils
 		public static bool IsZero(this UnityEngine.Quaternion quaternion) =>
 			(quaternion.x + quaternion.y + quaternion.z + quaternion.w) == 0f;
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsZero(this UnityEngine.Vector3 vector) =>
 			(vector.x + vector.y + vector.z) == 0f;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static UnityEngine.Quaternion GetFaceRotation(this FaceFrameResult face)
-		{
-			var quaternion = face.FaceRotationQuaternion.ToUnityQuaternion();
-			return new Quaternion(-quaternion.x, -quaternion.y, quaternion.z, quaternion.w);
-		}	
+		public static bool IsZero(this UnityEngine.Vector4 vector) =>
+			(vector.x + vector.y + vector.z + vector.w) == 0f;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UnityEngine.Vector2 GetLeanDirection(this Body body)

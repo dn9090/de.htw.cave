@@ -10,6 +10,30 @@ using Htw.Cave.Kinect.Utils;
 namespace Htw.Cave.Kinect
 {
 	/// <summary>
+	/// Contains preallocated buffers for the joint data.
+	/// The goal is to avoid per frame allocations in the <see cref="Windows.Kinect.Body.Joints"/>
+	/// and <see cref="Windows.Kinect.Body.JointOrientations"/> properties.
+	/// </summary>
+	internal class KinectJointBuffer
+	{
+		public Dictionary<JointType, Windows.Kinect.Joint> joints;
+
+		public Dictionary<JointType, JointOrientation> jointOrientations;
+
+		public KinectJointBuffer(int capacity)
+		{
+			this.joints = new Dictionary<JointType, Windows.Kinect.Joint>(capacity);
+			this.jointOrientations = new Dictionary<JointType, JointOrientation>(capacity);
+		}
+
+		public void RefreshBodyData(Body body)
+		{
+			body.RefreshJointsFast(this.joints);
+			body.RefreshJointOrientationsFast(this.jointOrientations);
+		}
+	}
+
+	/// <summary>
 	/// Holds the tracking data of a <see cref="Windows.Kinect.Body"/> and
 	/// the associated <see cref="Microsoft.Kinect.Face"/>.
 	/// The transformed and processed joint data can be accessed
@@ -30,36 +54,33 @@ namespace Htw.Cave.Kinect
 
 		public KinectJoint[] joints;
 
-		private Dictionary<JointType, Windows.Kinect.Joint> m_Joints;
-
-		private Dictionary<JointType, JointOrientation> m_JointOrientations;
+		private KinectJointBuffer m_Buffer;
 
 		private ulong m_TrackingId;
 
 		private Vector2 m_Lean;
 
-		public static KinectBodyFrame Create() => new KinectBodyFrame(25);
+		public static KinectBodyFrame Create() => new KinectBodyFrame(25); // Max 25 joints are available.
 
-		public KinectBodyFrame(int capacity)
+		private KinectBodyFrame(int capacity)
 		{
 			this.body = null;
 			this.face = null;
 			this.joints = new KinectJoint[capacity];
-			this.m_Joints = new Dictionary<JointType, Windows.Kinect.Joint>(capacity);
-			this.m_JointOrientations = new Dictionary<JointType, JointOrientation>(capacity);
+			this.m_Buffer = new KinectJointBuffer(capacity);
 			this.m_TrackingId = 0;
 			this.m_Lean = Vector2.zero;
 		}
 
-		public void RefreshBodyData(Body body, FaceFrameResult face, UnityEngine.Vector4 floorClipPlane)
+		public void RefreshFrameData(Body body, FaceFrameResult face, UnityEngine.Vector4 floorClipPlane)
 		{
 			this.body = body;
 			this.face = face;
-			this.body.RefreshJointsFast(this.m_Joints);
-			this.body.RefreshJointOrientationsFast(this.m_JointOrientations);
-			KinectJoint.RefreshJointData(this.joints, floorClipPlane, this.m_Joints, this.m_JointOrientations);
 			this.m_TrackingId = this.body.GetTrackingIdFast();
 			this.m_Lean = this.body.GetLeanDirection();
+			this.m_Buffer.RefreshBodyData(this.body);
+
+			KinectJoint.RefreshJointData(this.joints, floorClipPlane, this.m_Buffer.joints, this.m_Buffer.jointOrientations);
 		}
 	}
 
@@ -84,6 +105,7 @@ namespace Htw.Cave.Kinect
 		public static void RefreshJointData(KinectJoint[] buffer, UnityEngine.Vector4 floorClipPlane,
 			Dictionary<JointType, Windows.Kinect.Joint> joints, Dictionary<JointType, JointOrientation> jointOrientations)
 		{
+			var correction = KinectHelper.CalculateFloorRotationCorrection(floorClipPlane);
 			var index = 0;
 
 			for(int i = (int)JointType.SpineShoulder; i < buffer.Length; i = index++)
@@ -92,8 +114,8 @@ namespace Htw.Cave.Kinect
 				var joint = joints[jointType];
 				var jointOrientation = jointOrientations[jointType];
 
-				var position = KinectHelper.CameraSpacePointToRealSpace(joint.Position, floorClipPlane);
-				var rotation = KinectHelper.OrientationToRealSpace(jointOrientation.Orientation);
+				var position = correction * KinectHelper.CameraSpacePointToRealSpace(joint.Position, floorClipPlane);
+				var rotation = correction * KinectHelper.OrientationToRealSpace(jointOrientation.Orientation);
 
 				if(rotation.IsZero())
 				{

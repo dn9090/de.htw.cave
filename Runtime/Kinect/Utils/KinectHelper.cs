@@ -35,6 +35,9 @@ namespace Htw.Cave.Kinect.Utils
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Quaternion CalculateFloorRotationCorrection(UnityEngine.Vector4 floorClipPlane)
 		{
+			if(floorClipPlane.IsZero())
+				return Quaternion.identity;
+
 			Vector3 up = floorClipPlane;
 			Vector3 right = Vector3.Cross(up, Vector3.forward);
 			Vector3 forward = Vector3.Cross(right, up);
@@ -64,10 +67,14 @@ namespace Htw.Cave.Kinect.Utils
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UnityEngine.Vector3 CameraSpacePointToRealSpace(CameraSpacePoint point, UnityEngine.Vector4 floorClipPlane) =>
-			new Vector3(-point.X, DistanceFromCameraSpacePoint(point, floorClipPlane), point.Z); // Mirror on the x axis.
+			new Vector3(-point.X, point.Y + floorClipPlane.w, point.Z); // Mirror on the x axis.
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Quaternion OrientationToRealSpace(Windows.Kinect.Vector4 orientation) =>
 			new Quaternion(orientation.X, -orientation.Y, -orientation.Z, orientation.W); // Mirror on the x axis.
+	
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static UnityEngine.Quaternion FaceRotationToRealSpace(Windows.Kinect.Vector4 rotation) =>
+			new Quaternion(0f, 1f, 0f, 0f) * new Quaternion(-rotation.X, -rotation.Y, rotation.Z, rotation.W);
 	}
 }

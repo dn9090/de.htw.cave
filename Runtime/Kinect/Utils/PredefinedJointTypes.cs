@@ -23,8 +23,8 @@ namespace Htw.Cave.Kinect.Utils
 
 		public static readonly JointType[] armRight = { JointType.ShoulderRight, JointType.ElbowRight, JointType.WristRight };
 
-		public static readonly JointType[] handLeft = { JointType.HandLeft, JointType.WristLeft, JointType.ThumbLeft, JointType.HandTipLeft };
+		public static readonly JointType[] handLeft = { JointType.HandLeft, JointType.ThumbLeft, JointType.HandTipLeft };
 	
-		public static readonly JointType[] handRight = { JointType.HandRight, JointType.WristLeft, JointType.ThumbLeft, JointType.HandTipLeft };
+		public static readonly JointType[] handRight = { JointType.HandRight, JointType.ThumbLeft, JointType.HandTipLeft };
 	}
 }

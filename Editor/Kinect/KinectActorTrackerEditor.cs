@@ -31,8 +31,18 @@ namespace Htw.Cave.Kinect
 			{
 				EditorGUILayout.PropertyField(this.m_PrefabProperty);
 
-				if(this.m_Me.prefab == null)
-					EditorGUILayout.HelpBox("Select a custom Prefab that will be instantiated if a new person is tracked.", MessageType.Info);
+				EditorGUILayout.BeginHorizontal();
+				GUILayout.FlexibleSpace();
+
+				if(this.m_Me.prefab == null && GUILayout.Button("Create Actor"))
+				{
+					var gameObject = new GameObject("Kinect Actor");
+					var actor = gameObject.AddComponent<KinectActor>();
+					this.m_PrefabProperty.objectReferenceValue = actor;
+					Selection.activeGameObject = gameObject;
+				}
+
+				EditorGUILayout.EndHorizontal();
 			}	
 
 			serializedObject.ApplyModifiedProperties();

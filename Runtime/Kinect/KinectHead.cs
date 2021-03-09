@@ -18,46 +18,38 @@ namespace Htw.Cave.Kinect
 	public class KinectHead : KinectTrackable
 	{
 		/// <summary>
-		/// Gets whether or not the tracked person is wearing glasses.
+		/// Returns <c>true</c> if the actual face is tracked otherwise <c>false</c>.
+		/// It is possible that the <see cref="Windows.Kinect.JointType.Head"/> is tracked but the face is not.
 		/// </summary>
-		public DetectionResult wearingGlasses => this.m_WearingGlasses;
+		public bool isFaceTracked => this.m_IsFaceTracked;
 
-		private DetectionResult m_WearingGlasses;
+		private bool m_IsFaceTracked;
 
 		protected override TrackingState UpdateTrackingData(ref KinectBodyFrame bodyFrame)
 		{
 			var joint = bodyFrame[JointType.Head];
 
-			// Use the shoulder positions as fallback if
+			transform.localPosition = joint.position;
+			transform.localRotation = bodyFrame[JointType.Neck].rotation;
+
+			// Use the shoulder positions and rotation as fallback if
 			// the head is not tracked.
-			if(joint.trackingState == TrackingState.NotTracked)
+			if(joint.trackingState != TrackingState.Tracked)
 			{
 				joint = bodyFrame[JointType.SpineShoulder];
-
+				
 				if(joint.trackingState == TrackingState.NotTracked)
 					return TrackingState.NotTracked;
-				
+					
 				transform.localPosition = joint.position + Vector3.up * 0.25f;
-				transform.localRotation = Quaternion.Lerp(
-					bodyFrame[JointType.ShoulderLeft].rotation,
-					bodyFrame[JointType.ShoulderRight].rotation,
-					0.5f);
+				transform.localRotation = joint.rotation;
 
 				return TrackingState.Inferred;
 			}
 
-			transform.localPosition = joint.position;
-			transform.localRotation = joint.rotation;
-			transform.localEulerAngles += Vector3.right * 90f;
-
 			if(bodyFrame.face != null)
-			{
-				// For some reason nothing will work...
-				// (github.com/igentuman, ExtractFaceRotationInDegrees)
-				// transform.localRotation = bodyFrame.face.GetFaceRotation();
-				this.m_WearingGlasses = bodyFrame.face.FaceProperties[FaceProperty.WearingGlasses];
-			}
-
+				transform.localRotation = KinectHelper.FaceRotationToRealSpace(bodyFrame.face.FaceRotationQuaternion);
+			
 			return joint.trackingState;
 		}
 	}

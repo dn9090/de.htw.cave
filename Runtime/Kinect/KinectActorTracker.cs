@@ -24,11 +24,16 @@ namespace Htw.Cave.Kinect
 	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Actor Tracker")]
 	[RequireComponent(typeof(KinectManager))]
-	public sealed class KinectActorTracker : MonoBehaviour
+	public sealed class KinectActorTracker : MonoBehaviour, IEnumerable<KinectActor>
 	{
 		public event Action<KinectActor> onActorCreated;
 
 		public event Action<KinectActor> onActorDestroy;
+
+		/// <summary>
+		/// Number of currently tracked actors.
+		/// </summary>
+		public int actorCount => this.m_ActorCount;
 
 		/// <summary>
 		/// Defines how a <see cref="KinectActor"/> is created when a
@@ -79,6 +84,27 @@ namespace Htw.Cave.Kinect
 			return actors;
 		}
 
+		public KinectActor GetLongestTracked()
+		{
+			KinectActor actor = null;
+			float time = Time.time;
+
+			for(int i = 0; i < this.m_ActorCount; ++i)
+			{
+				if(this.m_Actors[i].createdAt < time)
+				{
+					time = this.m_Actors[i].createdAt;
+					actor = this.m_Actors[i];
+				}
+			}
+
+			return actor;
+		}
+
+		public IEnumerator<KinectActor> GetEnumerator() => new Enumerator(this.m_Actors, this.m_ActorCount);
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
 		private void PrepareTracking()
 		{
 			enabled = true;
@@ -114,7 +140,7 @@ namespace Htw.Cave.Kinect
 			// Do not expect the value assigned to the next new skeleton to grow sequentially,
 			// but rather the next value will be greater than the previous."
 			// The idea here is that the actor can be found with an early exit
-			// because the tracking id in the actors can never be higher than in the bodies.
+			// because the highest tracking id in the actors can never be higher than the highest in the bodies.
 
 			int bufferStart = this.m_Actors.Length / 2;
 			int bufferEnd = bufferStart + this.m_ActorCount;
@@ -160,6 +186,49 @@ namespace Htw.Cave.Kinect
 			var actor = KinectActor.Create(name, transform, this.constructionType, this.prefab);
 
 			return actor;
+		}
+
+		public struct Enumerator : IEnumerator<KinectActor>, IEnumerator
+		{
+			private KinectActor[] m_Actors;
+			private int m_Index;
+			private int m_Count;
+			private KinectActor m_Current;
+
+			internal Enumerator(KinectActor[] actors, int count)
+			{
+				this.m_Actors = actors;
+				this.m_Index = 0;
+				this.m_Count = count;
+				this.m_Current = default;
+			}
+
+			public void Dispose()
+			{
+			}
+
+			public bool MoveNext()
+			{
+				if ((uint)this.m_Index < (uint)this.m_Count)
+				{
+					this.m_Current = this.m_Actors[this.m_Index++];
+					return true;
+				}
+
+				this.m_Current = default;
+				this.m_Index = this.m_Count + 1;
+				return false;
+			}
+
+			public KinectActor Current => this.m_Current;
+
+			object IEnumerator.Current => this.m_Current;
+
+			void IEnumerator.Reset()
+			{
+				this.m_Index = 0;
+				this.m_Current = default;
+			}
 		}
 	}
 }

@@ -82,13 +82,13 @@ namespace Htw.Cave.Kinect
 		{
 			transform.localPosition = Vector3.zero;
 
-			this.m_BodyFrame.RefreshBodyData(body, face, floorClipPlane);
+			this.m_BodyFrame.RefreshFrameData(body, face, floorClipPlane);
 
 			RecalculateBounds();
 
 			// Compensation because the head joint is in the middle of the head.
 			this.m_Height = Mathf.Max(this.m_Height, this.m_Bounds.size.y + 0.1f); 
-			
+
 			foreach(var trackable in this.m_Trackables)
 				trackable.UpdateTrackingData(ref this.m_BodyFrame, ref this.m_Bounds);
 			
@@ -97,7 +97,7 @@ namespace Htw.Cave.Kinect
 			transform.position = center;
 
 			for(int i = 0; i < transform.childCount; ++i)
-				transform.GetChild(i).localPosition -= translation;
+				transform.GetChild(i).position -= translation;
 		}
 
 		internal void Track(KinectTrackable trackable)

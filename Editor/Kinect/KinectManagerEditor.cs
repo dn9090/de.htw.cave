@@ -96,12 +96,10 @@ namespace Htw.Cave.Kinect
 
 			var position = transform.position;
 			var rotation = transform.rotation;
-			var tilt = manager.tilt;
+			var correction = KinectHelper.CalculateFloorRotationCorrection(manager.floorClipPlane);
 
 			transform.position = transform.position + KinectHelper.SensorFloorPlaneYOffset(manager.floorClipPlane);
-
-			if(tilt != float.NaN)
-				transform.localEulerAngles += new Vector3(tilt, 0f, 0f);
+			transform.rotation = correction * transform.rotation;
 
 			// Kinect v2 FOV: 70.6° x 60°
 			var fov = new Vector2(70.6f, 60f);

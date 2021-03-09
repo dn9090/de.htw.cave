@@ -7,13 +7,6 @@ namespace Htw.Cave.Kinect
 	[CustomEditor(typeof(KinectHead))]
 	public class KinectHeadEditor : Editor
 	{
-		private static string[] s_WearingGlasses = {
-			"Unknown",
-			"No",
-			"Maybe",
-			"Yes"
-		};
-
 		private KinectHead m_Me;	
 	
 		public void OnEnable()
@@ -30,7 +23,7 @@ namespace Htw.Cave.Kinect
 
 		public override void OnInspectorGUI()
 		{
-			EditorGUILayout.LabelField("Wearing Glasses", s_WearingGlasses[(int)this.m_Me.wearingGlasses]);
+			EditorGUILayout.LabelField("Is Face Tracked", this.m_Me.isFaceTracked.ToString());
 		}
 
 		[DrawGizmo(GizmoType.Active | GizmoType.Selected | GizmoType.InSelectionHierarchy)]

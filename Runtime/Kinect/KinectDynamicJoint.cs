@@ -35,22 +35,5 @@ namespace Htw.Cave.Kinect
 
 			return joint.trackingState;
 		}
-
-		public static KinectDynamicJoint Create(JointType jointType, Transform parent, Action<KinectDynamicJoint> action = null)
-		{
-			var dynamicJoint = KinectTrackable.Create<KinectDynamicJoint>("Kinect " + jointType.MakeHumanReadable(), parent, action);
-			dynamicJoint.jointType = jointType;
-			return dynamicJoint;
-		}
-		
-		public static KinectDynamicJoint[] Create(JointType[] jointTypes, Transform parent, Action<KinectDynamicJoint> action = null)
-		{
-			var dynamicJoints = new KinectDynamicJoint[jointTypes.Length];
-
-			for(int i = 0; i < jointTypes.Length; ++i)
-				dynamicJoints[i] = Create(jointTypes[i], parent, action);
-
-			return dynamicJoints;
-		}
 	}
 }

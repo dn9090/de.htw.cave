@@ -25,7 +25,7 @@ namespace Htw.Cave.Kinect
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Manager")]
 	public sealed class KinectManager : MonoBehaviour
 	{
-		private const float FrameTime = 1f / 30f;
+		private const float FrameTime = 0.33f; // A bit less than 30 FPS.
 
 		public event Action onSensorOpen;
 
@@ -82,7 +82,6 @@ namespace Htw.Cave.Kinect
 
 		public void Start()
 		{
-			this.m_FloorClipPlane = new Windows.Kinect.Vector4 { X = 1, Y = 1, Z = 1, W = 1};
 			this.m_Stopwatch = new Stopwatch();
 			
 			try
@@ -95,10 +94,8 @@ namespace Htw.Cave.Kinect
 				this.m_Sensor = null;
 			}
 
-			if(this.m_Sensor != null)
-				OnEnable();
-			else
-				enabled = false;
+			enabled = this.m_Sensor != null;
+			OnEnable();
 		}
 
 		public void OnEnable()
@@ -198,9 +195,6 @@ namespace Htw.Cave.Kinect
 
 		private void AcquireBodyFrames()
 		{
-			if(this.m_MultiSourceFrameReader == null)
-				return;
-
 			MultiSourceFrame multiFrame = this.m_MultiSourceFrameReader.AcquireLatestFrame();
 
 			if(multiFrame == null)
@@ -208,19 +202,18 @@ namespace Htw.Cave.Kinect
 
 			using(BodyFrame bodyFrame = multiFrame.BodyFrameReference.AcquireFrame())
 			{
-				if(bodyFrame == null)
-					return;
+				if(bodyFrame != null && bodyFrame.RelativeTime > this.m_RelativeTime)
+				{
+					// @Optimize: Read the book and look for additional info on the
+					// guarantees of GetAndRefreshBodyData. Maybe it is possible
+					// to skip the sorting completely.
+					bodyFrame.GetAndRefreshBodyData(this.m_Bodies);
 
-				// @Optimize: Read the book and look for additional info on the
-				// guarantees of GetAndRefreshBodyData. Maybe it is possible
-				// to skip the sorting completely.
-
-				bodyFrame.GetAndRefreshBodyData(this.m_Bodies);
-
-				this.m_TrackedBodyCount = BodyHelper.SortAndCount(this.m_Bodies);
-				this.m_RelativeTime = bodyFrame.RelativeTime;
-				this.m_FloorClipPlane = bodyFrame.FloorClipPlane;
-				this.m_Frame += 1;
+					this.m_TrackedBodyCount = BodyHelper.SortAndCount(this.m_Bodies);
+					this.m_RelativeTime = bodyFrame.RelativeTime;
+					this.m_FloorClipPlane = bodyFrame.FloorClipPlane;
+					this.m_Frame += 1;
+				}
 			}
 
 			// In the documentation the MultiSourceFrame implements IDisposable
@@ -240,8 +233,7 @@ namespace Htw.Cave.Kinect
 					if(faceFrame == null)
 						continue;
 
-					if(faceFrame.FaceFrameResult != null)
-						this.m_FaceFrameResults[i] = faceFrame.FaceFrameResult;
+					this.m_FaceFrameResults[i] = faceFrame.FaceFrameResult;
 				}
 			}
 		}

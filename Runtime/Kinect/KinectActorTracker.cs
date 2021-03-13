@@ -8,19 +8,11 @@ using Microsoft.Kinect.Face;
 
 namespace Htw.Cave.Kinect
 {
-	public enum KinectActorConstructionType
-	{
-		Empty,
-		Basic,
-		Full,
-		Prefab
-	}
-
 	/// <summary>
 	/// This component can be attached to the <see cref="KinectManager"/>
 	/// and is responsible for creating <see cref="KinectActor"/> instances
-	/// for each tracked person. The <see cref="KinectActor"/> instances
-	/// are constructed according to <see cref="constructionType"/>.
+	/// for each tracked person. The <see cref="KinectActor"/> is
+	/// constructed according to the <see cref="constructionType"/>.
 	/// </summary>
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Actor Tracker")]
 	[RequireComponent(typeof(KinectManager))]
@@ -101,6 +93,45 @@ namespace Htw.Cave.Kinect
 			return actor;
 		}
 
+		public KinectActor GetClosestToPoint(Vector3 point)
+		{
+			KinectActor actor = null;
+			float distance = float.MaxValue;
+
+			for(int i = 0; i < this.m_ActorCount; ++i)
+			{
+				float mag = (this.m_Actors[i].bounds.center - point).sqrMagnitude;
+
+				if(mag < distance)
+				{
+					distance = mag;
+					actor = this.m_Actors[i];
+				}
+			}
+
+			return actor;
+		}
+
+		public KinectActor GetClosestToPoint(Vector3 point, JointType type)
+		{
+			KinectActor actor = null;
+			float distance = float.MaxValue;
+
+			for(int i = 0; i < this.m_ActorCount; ++i)
+			{
+				Vector3 position = this.m_Actors[i].transform.TransformPoint(this.m_Actors[i].bodyFrame[type].position);
+				float mag = (position - point).sqrMagnitude;
+
+				if(mag < distance)
+				{
+					distance = mag;
+					actor = this.m_Actors[i];
+				}
+			}
+
+			return actor;
+		}
+
 		public IEnumerator<KinectActor> GetEnumerator() => new Enumerator(this.m_Actors, this.m_ActorCount);
 
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -170,7 +201,9 @@ namespace Htw.Cave.Kinect
 			// Create a new actor for each new tracking id.
 			for(int i = bodyIndex; i < bodyCount; ++i)
 			{
-				var actor = ConstructActor(bodies[i].GetTrackingIdFast());
+				var actor = KinectActorBuilder
+					.Construct("Kinect Actor #" + bodies[i].GetTrackingIdFast(), transform, this.constructionType, this.prefab)
+					.Build();
 				this.m_Actors[this.m_ActorCount++] = actor;
 				
 				actor.UpdateTrackingData(bodies[i], faces[i], floorClipPlane);
@@ -178,14 +211,6 @@ namespace Htw.Cave.Kinect
 			}
 
 			Array.Clear(this.m_Actors, this.m_ActorCount, this.m_Actors.Length - this.m_ActorCount);
-		}
-
-		private KinectActor ConstructActor(ulong trackingId)
-		{
-			var name = "Kinect Actor #" + trackingId;
-			var actor = KinectActor.Create(name, transform, this.constructionType, this.prefab);
-
-			return actor;
 		}
 
 		public struct Enumerator : IEnumerator<KinectActor>, IEnumerator

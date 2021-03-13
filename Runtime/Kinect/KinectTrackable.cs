@@ -35,7 +35,7 @@ namespace Htw.Cave.Kinect
 
 		/// <summary>
 		/// Defines if the tracking data is filtered before updating
-		/// the <see cref="transform.position"/> and <see cref="transform.rotation"/>.
+		/// the <see cref="transform.localPosition"/> and <see cref="transform.localRotation"/>.
 		/// </summary>
 		public bool filterPositionAndRotation;
 

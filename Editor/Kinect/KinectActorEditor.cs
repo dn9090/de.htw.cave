@@ -26,6 +26,15 @@ namespace Htw.Cave.Kinect
 		All = ~(-1 << 8)
 	}
 
+	[Flags]
+	internal enum KinectJointOptions
+	{
+		None = 0,
+		FilterPositionAndRotation = 1 << 0,
+		VisualizeJoints = 1 << 1,
+		Everything = ~(-1 << 2)
+	} 
+
 	[CustomEditor(typeof(KinectActor))]
 	public class KinectActorEditor : Editor
 	{
@@ -81,13 +90,13 @@ namespace Htw.Cave.Kinect
 
 		private KinectJointMask m_JointMask;
 
-		private bool m_Filter;
+		private KinectJointOptions m_JointOptions;
 
 		public void OnEnable()
 		{
 			this.m_Me = (KinectActor)target;
 			this.m_JointMask |= KinectJointMask.Head | KinectJointMask.HandLeft | KinectJointMask.HandRight;
-			this.m_Filter = true;
+			this.m_JointOptions = KinectJointOptions.FilterPositionAndRotation;
 		}
 
 		public override void OnInspectorGUI()
@@ -119,7 +128,7 @@ namespace Htw.Cave.Kinect
 
 			EditorGUILayout.Space();
 
-			this.m_Filter = EditorGUILayout.Toggle("Filter Position And Rotation", this.m_Filter);
+			this.m_JointOptions = (KinectJointOptions)EditorGUILayout.EnumFlagsField("Joint Options", this.m_JointOptions);
 
 			EditorGUILayout.BeginHorizontal();
 			GUILayout.FlexibleSpace();
@@ -214,46 +223,36 @@ namespace Htw.Cave.Kinect
 
 		private void AddHumaniodJoints()
 		{
-			var parent = this.m_Me.transform;
-
-			Action<KinectTrackable> applyFilter = (trackable) => { trackable.filterPositionAndRotation = this.m_Filter; };
+			var builder = new KinectActorBuilder(this.m_Me);
 
 			if(this.m_JointMask.HasFlag(KinectJointMask.Head))
-			{
-				KinectTrackable.Create<KinectHead>("Kinect Head", parent, applyFilter);
-				KinectDynamicJoint.Create(PredefinedJointTypes.head.Where(jointType => jointType != JointType.Head).ToArray(), parent, applyFilter);
-			}
+				builder.WithJoints(PredefinedJointTypes.head);
 			
 			if(this.m_JointMask.HasFlag(KinectJointMask.Torso))
-				KinectDynamicJoint.Create(PredefinedJointTypes.torso, parent, applyFilter);
+				builder.WithJoints(PredefinedJointTypes.torso);
 
 			if(this.m_JointMask.HasFlag(KinectJointMask.LegLeft))
-				KinectDynamicJoint.Create(PredefinedJointTypes.legLeft, parent, applyFilter);
+				builder.WithJoints(PredefinedJointTypes.legLeft);
 
 			if(this.m_JointMask.HasFlag(KinectJointMask.LegRight))
-				KinectDynamicJoint.Create(PredefinedJointTypes.legRight, parent, applyFilter);
+				builder.WithJoints(PredefinedJointTypes.legRight);
 
 			if(this.m_JointMask.HasFlag(KinectJointMask.ArmLeft))
-				KinectDynamicJoint.Create(PredefinedJointTypes.armLeft, parent, applyFilter);
+				builder.WithJoints(PredefinedJointTypes.armLeft);
 
 			if(this.m_JointMask.HasFlag(KinectJointMask.ArmRight))
-				KinectDynamicJoint.Create(PredefinedJointTypes.armRight, parent, applyFilter);
+				builder.WithJoints(PredefinedJointTypes.armRight);
 
 			if(this.m_JointMask.HasFlag(KinectJointMask.HandLeft))
-			{
-				KinectTrackable.Create<KinectHand>("Kinect Hand Left", parent,
-					(trackable) => { trackable.handType = HandType.Left; trackable.filterPositionAndRotation = this.m_Filter; });
+				builder.WithJoints(PredefinedJointTypes.handLeft);
 
-				KinectDynamicJoint.Create(PredefinedJointTypes.handLeft.Where(jointType => jointType != JointType.HandLeft).ToArray(), parent, applyFilter);
-			}
-
-			if(this.m_JointMask.HasFlag(KinectJointMask.HandRight))
-			{
-				KinectTrackable.Create<KinectHand>("Kinect Hand Right", parent,
-					(trackable) => { trackable.handType = HandType.Right; trackable.filterPositionAndRotation = this.m_Filter; });
-
-				KinectDynamicJoint.Create(PredefinedJointTypes.handRight.Where(jointType => jointType != JointType.HandRight).ToArray(), parent, applyFilter);
-			}
+			if(this.m_JointMask.HasFlag(KinectJointMask.HandLeft))
+				builder.WithJoints(PredefinedJointTypes.handRight);
+			
+			builder
+				.WithFilter(this.m_JointOptions.HasFlag(KinectJointOptions.FilterPositionAndRotation))
+				.WithJointVisualization(this.m_JointOptions.HasFlag(KinectJointOptions.VisualizeJoints))
+				.Build();
 		}
 
 		private bool ContainsTrackables()

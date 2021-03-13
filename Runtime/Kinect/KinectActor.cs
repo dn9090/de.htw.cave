@@ -141,43 +141,5 @@ namespace Htw.Cave.Kinect
 		
 			this.m_Bounds.center = transform.TransformPoint(this.m_Bounds.center);
 		}
-
-		public static KinectActor Create(string name, Transform parent, KinectActorConstructionType constructionType, KinectActor prefab = null)
-		{
-			if(constructionType == KinectActorConstructionType.Prefab)
-			{
-				var actor = MonoBehaviour.Instantiate<KinectActor>(prefab, parent);
-				actor.gameObject.name = name;
-
-				return actor;
-			}
-				
-			var gameObject = new GameObject(name);
-			gameObject.transform.parent = parent;
-
-			if(constructionType == KinectActorConstructionType.Basic || constructionType == KinectActorConstructionType.Full)
-			{
-				KinectTrackable.Create<KinectHead>("Kinect Head", gameObject.transform);
-				KinectTrackable.Create<KinectHand>("Kinect Hand Left", gameObject.transform,
-					(trackable) => { trackable.handType = HandType.Left; });
-				KinectTrackable.Create<KinectHand>("Kinect Hand Right", gameObject.transform,
-					(trackable) => { trackable.handType = HandType.Right; });
-
-				KinectDynamicJoint.Create(PredefinedJointTypes.head.Where(jointType => jointType != JointType.Head).ToArray(), gameObject.transform);
-				KinectDynamicJoint.Create(PredefinedJointTypes.handLeft.Where(jointType => jointType != JointType.HandLeft).ToArray(), gameObject.transform);
-				KinectDynamicJoint.Create(PredefinedJointTypes.handRight.Where(jointType => jointType != JointType.HandRight).ToArray(), gameObject.transform);
-			}
-			
-			if(constructionType == KinectActorConstructionType.Full)
-			{
-				KinectDynamicJoint.Create(PredefinedJointTypes.torso, gameObject.transform);
-				KinectDynamicJoint.Create(PredefinedJointTypes.legLeft, gameObject.transform);
-				KinectDynamicJoint.Create(PredefinedJointTypes.legRight, gameObject.transform);
-				KinectDynamicJoint.Create(PredefinedJointTypes.armLeft, gameObject.transform);
-				KinectDynamicJoint.Create(PredefinedJointTypes.armRight, gameObject.transform);
-			}
-
-			return gameObject.AddComponent<KinectActor>();
-		}
 	}
 }

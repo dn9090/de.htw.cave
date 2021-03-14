@@ -81,7 +81,7 @@ namespace Htw.Cave.Kinect
 
 		public static T Create<T>(string name, Transform parent = null, Action<T> action = null) where T : KinectTrackable
 		{
-			GameObject gameObject = new GameObject("Kinect " + name);
+			GameObject gameObject = new GameObject(name);
 			gameObject.transform.parent = parent;
 			gameObject.transform.localPosition = Vector3.zero;
 			gameObject.transform.localRotation = Quaternion.identity;

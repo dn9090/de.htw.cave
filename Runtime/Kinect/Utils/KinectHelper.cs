@@ -14,6 +14,10 @@ namespace Htw.Cave.Kinect.Utils
 	/// </summary>
 	public static class KinectHelper
 	{
+		/// <summary>
+		/// Returns the parent joint via using the numeric value of
+		/// the <see cref="Windows.Kinect.JointType"/> as the index.
+		/// </summary>
 		public static readonly JointType[] parentJointTypes = {
 			JointType.SpineBase, JointType.SpineBase, JointType.SpineShoulder, JointType.Neck, // Spine to head.
 			JointType.SpineShoulder, JointType.ShoulderLeft, JointType.ElbowLeft, JointType.WristLeft, // Shoulder to left wrist.
@@ -54,7 +58,7 @@ namespace Htw.Cave.Kinect.Utils
 
 			// In the reference implementation on github.com/kinect/samples the
 			// normal is the forward and the direction the upwards vector but
-			// then the hand tip and thumb are not pointing along the forward axis:
+			// this results in hand tip and thumb are not pointing along the forward axis:
 			// Quaternion.LookRotation(normal, direction);
 
 			return Quaternion.LookRotation(direction + 0.0001f * Vector3.forward, normal + 0.0001f * Vector3.up);

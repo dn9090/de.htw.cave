@@ -100,11 +100,11 @@ namespace Htw.Cave.Kinect
 
 			for(int i = 0; i < this.m_ActorCount; ++i)
 			{
-				float mag = (this.m_Actors[i].bounds.center - point).sqrMagnitude;
+				float sqr = (this.m_Actors[i].bounds.center - point).sqrMagnitude;
 
-				if(mag < distance)
+				if(sqr < distance)
 				{
-					distance = mag;
+					distance = sqr;
 					actor = this.m_Actors[i];
 				}
 			}
@@ -120,11 +120,11 @@ namespace Htw.Cave.Kinect
 			for(int i = 0; i < this.m_ActorCount; ++i)
 			{
 				Vector3 position = this.m_Actors[i].transform.TransformPoint(this.m_Actors[i].bodyFrame[type].position);
-				float mag = (position - point).sqrMagnitude;
+				float sqr = (position - point).sqrMagnitude;
 
-				if(mag < distance)
+				if(sqr < distance)
 				{
-					distance = mag;
+					distance = sqr;
 					actor = this.m_Actors[i];
 				}
 			}

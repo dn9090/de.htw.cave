@@ -65,6 +65,11 @@ namespace Htw.Cave.Kinect.Utils
 	{
 		public float hatXPrev;
 
+		public LowPassFilter(float hatXPrev)
+		{
+			this.hatXPrev = hatXPrev;
+		}
+
 		public float Filter(float x, float alpha) => this.hatXPrev = alpha * x + (1 - alpha) * this.hatXPrev;
 	}
 
@@ -80,8 +85,8 @@ namespace Htw.Cave.Kinect.Utils
 		{
 			if(!this.m_Initialized)
 			{
-				this.m_DxFilter.hatXPrev = 0f;
-				this.m_XFilter.hatXPrev = x;
+				this.m_DxFilter = new LowPassFilter(0f);
+				this.m_XFilter = new LowPassFilter(x);
 				return x;
 			}
 

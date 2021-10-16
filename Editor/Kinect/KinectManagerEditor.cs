@@ -43,6 +43,17 @@ namespace Htw.Cave.Kinect
 			EditorGUI.EndChangeCheck();
 
 			OnKinectSensorGUI();
+			
+			if(!Application.isPlaying)
+			{
+				EditorGUILayout.BeginHorizontal();
+				GUILayout.FlexibleSpace();
+
+				if(GUILayout.Button("Help"))
+					KinectManagerHelpWindow.Open();
+
+				EditorGUILayout.EndHorizontal();
+			}
 		}
 
 		private void OnKinectSensorGUI()
@@ -71,10 +82,10 @@ namespace Htw.Cave.Kinect
 
 			if(count > 0)
 			{
-				this.m_ScrollPosition = EditorGUILayout.BeginScrollView(this.m_ScrollPosition, EditorStyles.helpBox);
+				this.m_ScrollPosition = EditorGUILayout.BeginScrollView(this.m_ScrollPosition);
 				for(int i = 0; i < count; ++i)
 				{
-					EditorGUILayout.LabelField("Tracking Id", bodies[i].TrackingId.ToString());
+					EditorGUILayout.LabelField("Tracking Id", bodies[i].TrackingId.ToString(), EditorStyles.helpBox);
 				}
 				EditorGUILayout.EndScrollView();
 			}
@@ -85,7 +96,7 @@ namespace Htw.Cave.Kinect
 			if(this.m_Me.sensor != null && this.m_Me.sensor.IsOpen)
 				Repaint();
 		}
-
+		
 		[DrawGizmo(GizmoType.Active | GizmoType.Selected)]
 		public static void DrawGizmos(KinectManager manager, GizmoType type)
 		{
@@ -99,20 +110,76 @@ namespace Htw.Cave.Kinect
 			var correction = KinectHelper.CalculateFloorRotationCorrection(manager.floorClipPlane);
 
 			transform.position = transform.position + KinectHelper.SensorFloorPlaneYOffset(manager.floorClipPlane);
-			transform.rotation = correction * transform.rotation;
+			transform.rotation = Quaternion.Inverse(correction) * transform.rotation;
 
-			// Kinect v2 FOV: 70.6° x 60°
-			var fov = new Vector2(70.6f, 60f);
-			var minRange = 0.5f;
-			var maxRange = 4.5f;
-			var aspectRatio = fov.x / fov.y;
-
-			Gizmos.color = UnityEngine.Color.green;
+			Gizmos.color = KinectEditorUtils.green;
 			Gizmos.matrix = transform.localToWorldMatrix;
-			Gizmos.DrawFrustum(Vector3.zero, fov.y, minRange, maxRange, aspectRatio); 
+			Gizmos.DrawFrustum(Vector3.zero, KinectHelper.fieldOfView.y, KinectHelper.clippingPlane.x,
+				KinectHelper.clippingPlane.y, KinectHelper.aspectRatio); 
 
 			transform.rotation = rotation;
 			transform.position = position;
+		}
+	}
+	
+	public class KinectManagerHelpWindow : EditorWindow
+	{
+		public static void Open()
+		{
+			var window = EditorWindow.GetWindow(typeof(KinectManagerHelpWindow), true, "Kinect Manager Help", true);
+			window.minSize = new Vector2(350f, 600f);
+		}
+
+		public void OnGUI()
+		{
+			var install = "Before you connect with the Kinect v2 sensor "
+			            + "install the Kinect v2 SDK. "
+						+ "Make sure to restart your pc after the installation was completed.";
+		
+			var issueMicrophone = "Make sure that the 'allow desktop apps to access your microphone' "
+			                    + "option is enabled in the Window privacy settings. "
+								+ "For more information see the link below.";
+			
+			var issueWindowsUpdate = "This can happen after the Windows 10 Creator Update. "
+			                       + "See the link below for further instructions.";
+			
+			var textBoxStyle = EditorStyles.helpBox;
+			textBoxStyle.fontSize = EditorStyles.boldLabel.fontSize;
+		
+			// INSTALL SDK
+			EditorGUILayout.LabelField("Kinect SDK", EditorStyles.boldLabel);
+			EditorGUILayout.LabelField(install, textBoxStyle);
+			
+			EditorGUILayout.BeginHorizontal();
+			
+			GUILayout.FlexibleSpace();
+			if(GUILayout.Button("Download SDK"))
+				Application.OpenURL("https://www.microsoft.com/en-us/download/details.aspx?id=44561");
+			EditorGUILayout.EndHorizontal();
+		
+			EditorGUILayout.LabelField("Issues", EditorStyles.boldLabel);
+			
+			// ISSUE MICROPHONE OR ADAPTER
+			EditorGUILayout.LabelField("The Kinect sensor is disconnecting after about 10 seconds.");
+			EditorGUILayout.LabelField(issueMicrophone, textBoxStyle);
+			
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.FlexibleSpace();
+			if(GUILayout.Button("Open Link"))
+				Application.OpenURL("https://social.msdn.microsoft.com/Forums/sqlserver/en-US/bcd775ef-64b0-4e94-8d26-ce297d6d60ea/kinect-v2-keeps-disconnecting-after-every-10-seconds-on-windows-10-1903?forum=kinectv2sdk");
+			EditorGUILayout.EndHorizontal();
+
+			EditorGUILayout.Space();
+			
+			// ISSUE WINDOWS UPDATE
+			EditorGUILayout.LabelField("The Kinect sensor is not recognized.");
+			EditorGUILayout.LabelField(issueWindowsUpdate, textBoxStyle);
+			
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.FlexibleSpace();
+			if(GUILayout.Button("Open Link"))
+				Application.OpenURL("https://skarredghost.com/2018/03/01/fix-kinect-v2-not-working-windows-10-creators-update/");
+			EditorGUILayout.EndHorizontal();
 		}
 	}
 }

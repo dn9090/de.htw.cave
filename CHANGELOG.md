@@ -1,5 +1,40 @@
 # Changelog
 
+
+## Version 0.9.1-preview
+Requires: Unity 2019.3
+
+### Added Features
+* Calibration: The projection and `VirtualCamera` components can be calibrated over the network via the new `VirtualCalibrator` which supports TCP connections.
+* Calibration: Use the `VirtualCalibrationWindow` UI in the editor to connect to the `VirtualCalibrator` component.
+* Rendering: The `VirtualProjection.ComputeHolographicProjectionMatrix` function is a simpler and faster way of creating a `Camera.projectionMatrix` with a holographic projection.
+* Rendering: The `VirtualProjection.ComputeBimberMatrix` now computes a Bimber Matrix using an internal solver which replaces bindings to the OpenCV solver.
+* Microsoft Kinect 2.0: The `KinectActor` is now a seperate component which represents a single tracked person. 
+* Microsoft Kinect 2.0: The new `KinectTracker` can track multiple `KinectActor`'s. 
+* Microsoft Kinect 2.0: The `KinectSkeleton` allows a simple creation and tracking of joints on a `KinectActor`.
+* Microsoft Kinect 2.0: Positions and rotations can now be filtered via the `OneEuroFilter`.
+
+### Improvements
+* Rendering: The output target of `VirtualCamera` components can now be changed at runtime using `VirtualEnvironment.SetOutputTarget`.
+* Microsoft Kinect 2.0: Reduced GC pressure and computation time of joint positions and rotations.
+
+### API Changes
+* Rendering: The `ProjectorBrain` is replaced by the `VirtualEnvironment` which can now be calibrated via the new `VirtualCalibrator` component.
+* Rendering: `VirtualCamera` replaces the old `ProjectorCamera`.
+* Microsoft Kinect 2.0: `KinectActor` is no longer responsible for updating joint `GameObject`'s.
+* Microsoft Kinect 2.0: `KinectTrackableObject` and `KinectTrackable` components are now merged to `KinectSkeletonJoint`.
+* Microsoft Kinect 2.0: `KinectPlayArea` is replaced by the `KinectTracker`. 
+
+### Fixes
+* Microsoft Kinect 2.0: Fixed calculation of floor tilt and joint rotations with `KinectHelper.CalculateFloorRotationCorrection`.
+* Microsoft Kinect 2.0: Fixed performance bugs in various `Windows.Kinect.*` API's.
+* Microsoft Kinect 2.0: In Unity versions higher than 2019.3 building the standalone puts the Kinect plugin libraries in the wrong subfolder. The fix scans the build directory and moves the libraries to the correct folder.
+
+### Removed
+* `Htw.Cave.Joycons` namespace with all components and the `JoyconLib`. Use the new Unity Input System instead.
+* OpenCV bindings and libraries.
+* Standard controls and interactions in the `Htw.Cave.Controls` namespace.
+
 ## Version 0.5.2-preview
 Requires: Unity 2019.1
 

@@ -9,22 +9,23 @@ namespace Htw.Cave.Kinect.Addin
 {
 	public static class KinectAddinHelper
 	{
-		public const string PackageDirName = "de.htw.cave";
-		public const string PackagesDirName = "Packages";
-		public const string PluginsDirName = "Plugins";
+		public static string packagePath = "Packages" + Path.DirectorySeparatorChar + "de.htw.cave";
 
-		public static readonly string[] KinectPluginDirNames = {"Metro", "x86", "x86_64"};
-		public static readonly string KinectPluginPath = "ThirdParty/Kinect/" + PluginsDirName;
+		public static string pluginsDirName = "Plugins";
+
+		public static readonly string[] kinectPluginDirNames = { "Metro", "x86", "x86_64" };
+
+		public static readonly string kinectPluginPath = "ThirdParty/Kinect/" + pluginsDirName;
 
 		public static DirectoryInfo[] PluginDirs(DirectoryInfo source)
 		{
-			return KinectPluginDirNames.Select(dir => new DirectoryInfo(Path.Combine(source.FullName, dir))).ToArray();
+			return kinectPluginDirNames.Select(dir => new DirectoryInfo(Path.Combine(source.FullName, dir))).ToArray();
 		}
 
 		public static bool IsPluginInAssets()
 		{
 			char separator = Path.DirectorySeparatorChar;
-			string targetDir = Application.dataPath + separator + PluginsDirName;
+			string targetDir = Application.dataPath + separator + pluginsDirName;
 			return PluginDirs(new DirectoryInfo(targetDir)).Any(dir => dir.Exists);
 		}
 
@@ -39,10 +40,9 @@ namespace Htw.Cave.Kinect.Addin
 
 		public static void MovePluginsToAssets()
 		{
-			char separator = Path.DirectorySeparatorChar;
-			string packageDir = Path.Combine(Application.dataPath, ".." + separator + PackagesDirName + separator + PackageDirName);
-			string kinectDir = Path.Combine(packageDir, KinectPluginPath);
-			string targetDir = Application.dataPath + separator + PluginsDirName;
+			string packageDir = Path.Combine(Application.dataPath, "..", packagePath);
+			string kinectDir = Path.Combine(packageDir, kinectPluginPath);
+			string targetDir = Path.Combine(Application.dataPath, pluginsDirName);
 
 			if(!Directory.Exists(targetDir))
 				Directory.CreateDirectory(targetDir);
@@ -53,10 +53,9 @@ namespace Htw.Cave.Kinect.Addin
 
 		public static void MovePluginsToPackage()
 		{
-			char separator = Path.DirectorySeparatorChar;
-			string packageDir = Path.Combine(Application.dataPath, ".." + separator + PackagesDirName + separator + PackageDirName);
-			string kinectDir = Path.Combine(packageDir, KinectPluginPath);
-			string targetDir = Application.dataPath + separator + PluginsDirName;
+			string packageDir = Path.Combine(Application.dataPath, "..", packagePath);
+			string kinectDir = Path.Combine(packageDir, kinectPluginPath);
+			string targetDir = Path.Combine(Application.dataPath, pluginsDirName);
 
 			foreach(DirectoryInfo dir in PluginDirs(new DirectoryInfo(targetDir)))
 				Move(dir, new DirectoryInfo(Path.Combine(kinectDir, dir.Name)));
@@ -71,6 +70,33 @@ namespace Htw.Cave.Kinect.Addin
 		public static void Import()
 		{
 			AssetDatabase.Refresh();
+		}
+
+		public static void FixBuildPluginSubdirectory(string executable, BuildTarget target)
+		{
+			// In older Unity versions the plugins are copied directly under the Plugins/ folder.
+			// Newer Unity versions (2019.4 and higher) copy the plugins to a subfolder
+			// based on the platform like Plugins/x86_64 which results in broken file path
+			// lookups from the Kinect Addin.
+
+			// The fix tries to restore the old directory structure.
+			// In the future it would be better to replace the KinectCopyPluginDataHelper
+			// with a variant that works without moving the Plugin folder everytime.
+
+			var buildTargetDir = target == BuildTarget.StandaloneWindows64 ? "x86_64" : "x86";
+			var dataPath = Path.Combine(Path.GetDirectoryName(executable), Path.GetFileNameWithoutExtension(executable) + "_Data");
+			
+			try
+			{
+				
+				var pluginsDir = Path.Combine(dataPath, "Plugins");
+				var plugins = Directory.GetFiles(Path.Combine(pluginsDir, buildTargetDir));
+
+				foreach(var plugin in plugins)
+					File.Move(plugin, Path.Combine(pluginsDir, Path.GetFileName(plugin)));
+			} catch(DirectoryNotFoundException) {
+				return; // Nothing to fix...
+			}
 		}
 	}
 }

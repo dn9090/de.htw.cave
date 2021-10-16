@@ -10,77 +10,84 @@ using Htw.Cave.Kinect.Utils;
 namespace Htw.Cave.Kinect
 {
 	/// <summary>
-	/// Contains preallocated buffers for the joint data.
-	/// The goal is to avoid per frame allocations in the <see cref="Windows.Kinect.Body.Joints"/>
-	/// and <see cref="Windows.Kinect.Body.JointOrientations"/> properties.
-	/// </summary>
-	internal class KinectJointBuffer
-	{
-		public Dictionary<JointType, Windows.Kinect.Joint> joints;
-
-		public Dictionary<JointType, JointOrientation> jointOrientations;
-
-		public KinectJointBuffer(int capacity)
-		{
-			this.joints = new Dictionary<JointType, Windows.Kinect.Joint>(capacity);
-			this.jointOrientations = new Dictionary<JointType, JointOrientation>(capacity);
-		}
-
-		public void RefreshBodyData(Body body)
-		{
-			body.RefreshJointsFast(this.joints);
-			body.RefreshJointOrientationsFast(this.jointOrientations);
-		}
-	}
-
-	/// <summary>
 	/// Holds the tracking data of a <see cref="Windows.Kinect.Body"/> and
 	/// the associated <see cref="Microsoft.Kinect.Face"/>.
 	/// The transformed and processed joint data can be accessed
 	/// via the <see cref="KinectBodyFrame.joints"/> array or with the
 	/// index accessor.
 	/// </summary>
-	public struct KinectBodyFrame
+	public class KinectBodyFrame
 	{
 		public KinectJoint this[JointType jointType] => this.joints[(int)jointType];
 
-		public ulong trackingId => this.m_TrackingId;
+		/// <summary>
+		/// Provides a unique identification number of the body.
+		/// </summary>
+		public ulong trackingId;
+		
+		/// <summary>
+		/// The body leaning direction and strength.
+		/// </summary>
+		public Vector2 lean;
+		
+		/// <summary>
+		/// The face rotation of a body measured by
+		/// the sensor to a maximum of 60 degrees.
+		/// </summary>
+		public Quaternion faceRotation;
 
-		public Vector2 lean => this.m_Lean;
-
+		/// <summary>
+		/// The native body data.
+		/// </summary>
 		public Body body;
 
+		/// <summary>
+		/// The native face data.
+		/// </summary>
 		public FaceFrameResult face;
 
+		/// <summary>
+		/// The joint data relative to the Kinect coordinate system.
+		/// </summary>
 		public KinectJoint[] joints;
 
-		private KinectJointBuffer m_Buffer;
+		/// <summary>
+		/// Contains the raw joint positions without sensor rotation correction.
+		/// </summary>
+		public Dictionary<JointType, Windows.Kinect.Joint> rawJoints;
 
-		private ulong m_TrackingId;
+		/// <summary>
+		/// Contains the raw joint orientations without sensor rotation correction.
+		/// </summary>
+		public Dictionary<JointType, JointOrientation> rawJointOrientations;
 
-		private Vector2 m_Lean;
-
-		public static KinectBodyFrame Create() => new KinectBodyFrame(25); // Max 25 joints are available.
-
-		private KinectBodyFrame(int capacity)
+		public KinectBodyFrame()
 		{
+			this.trackingId = 0;
+			this.lean = Vector2.zero;
 			this.body = null;
 			this.face = null;
-			this.joints = new KinectJoint[capacity];
-			this.m_Buffer = new KinectJointBuffer(capacity);
-			this.m_TrackingId = 0;
-			this.m_Lean = Vector2.zero;
+			this.joints = new KinectJoint[KinectHelper.jointTypeCount];
+			this.rawJoints = new Dictionary<JointType, Windows.Kinect.Joint>(KinectHelper.jointTypeCount);
+			this.rawJointOrientations = new Dictionary<JointType, JointOrientation>(KinectHelper.jointTypeCount);
 		}
 
+		/// <summary>
+		/// Refreshes preallocated buffers for frame and joint data.
+		/// The goal is to avoid per frame allocations in the <see cref="Windows.Kinect.Body.Joints"/>
+		/// and <see cref="Windows.Kinect.Body.JointOrientations"/> properties.
+		/// </summary>
 		public void RefreshFrameData(Body body, FaceFrameResult face, UnityEngine.Vector4 floorClipPlane)
 		{
 			this.body = body;
 			this.face = face;
-			this.m_TrackingId = this.body.GetTrackingIdFast();
-			this.m_Lean = this.body.GetLeanDirection();
-			this.m_Buffer.RefreshBodyData(this.body);
+			this.trackingId = this.body.GetTrackingIdFast();
+			this.lean = this.body.GetLeanDirection();
+			this.faceRotation = this.face == null ? Quaternion.identity : KinectHelper.FaceRotationToRealSpace(face.FaceRotationQuaternion);
+			body.RefreshJointsFast(this.rawJoints);
+			body.RefreshJointOrientationsFast(this.rawJointOrientations);
 
-			KinectJoint.RefreshJointData(this.joints, floorClipPlane, this.m_Buffer.joints, this.m_Buffer.jointOrientations);
+			KinectJoint.RefreshJointData(this.joints, floorClipPlane, this.rawJoints, this.rawJointOrientations);
 		}
 	}
 
@@ -108,6 +115,8 @@ namespace Htw.Cave.Kinect
 			var correction = KinectHelper.CalculateFloorRotationCorrection(floorClipPlane);
 			var index = 0;
 
+			// Trick: Because SpineShoulder is not the successor of SpineMid in the enum,
+			// the loop does the first iteration for SpineShoulder and restarts at index = 0 = SpineBase.
 			for(int i = (int)JointType.SpineShoulder; i < buffer.Length; i = index++)
 			{
 				var jointType = (JointType)i;
@@ -119,12 +128,38 @@ namespace Htw.Cave.Kinect
 
 				if(rotation.IsZero())
 				{
-					var parent = KinectHelper.GetParentJointType(jointType);
+					var parent = KinectHelper.parentJointTypes[i];
 					rotation = KinectHelper.InferrRotationFromParentPosition(position, buffer[(int)parent].position);
 				}
 				
 				buffer[i] = new KinectJoint(position, rotation, joint.TrackingState);
 			}
+			
+			// This is a fix for the head rotation. 
+			// Normally the rotation should be inferred from the parent spine
+			// like other joints but for some reason this does not work correctly. 
+			var head = buffer[(int)JointType.Head];
+			var neck = buffer[(int)JointType.Neck];
+			var fixedRotation = Quaternion.LookRotation(neck.rotation * Vector3.forward, head.position - neck.position);
+			
+			buffer[(int)JointType.Head] = new KinectJoint(head.position, fixedRotation, head.trackingState);
 		}
+		
+		/// <summary>
+		/// Transforms the local joints from the given coordinate system to
+		/// world space.
+		/// </summary>
+		/// <param name="src">The source buffer containing the joints in local space.</param>
+		/// <param name="dst">The destination buffer in which the transformed joints will be written.</param>
+		/// <param name="origin">The origin of the coordinate system.</param>
+		public static void TransformJointData(KinectJoint[] src, KinectJoint[] dst, Transform origin)
+		{
+			for(int i = 0; i < src.Length; ++i)
+			{
+				var position = origin.TransformPoint(src[i].position);
+				var rotation = origin.rotation * src[i].rotation;
+				dst[i] = new KinectJoint(position, rotation, src[i].trackingState);
+			}
+		}	
 	}
 }

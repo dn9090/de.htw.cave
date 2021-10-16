@@ -1,6 +1,4 @@
 using System;
-using System.IO;
-using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build;
@@ -18,6 +16,9 @@ namespace Htw.Cave.Kinect.Addin
 			// after they where exported in the building process.
 			KinectAddinHelper.MovePluginsToPackage();
 			KinectAddinHelper.Import();
+
+			// Fix plugin subfolder for new Unity versions.
+			KinectAddinHelper.FixBuildPluginSubdirectory(report.summary.outputPath, report.summary.platform);
 		}
 	}
 }

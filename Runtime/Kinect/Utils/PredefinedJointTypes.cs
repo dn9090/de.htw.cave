@@ -25,6 +25,6 @@ namespace Htw.Cave.Kinect.Utils
 
 		public static readonly JointType[] handLeft = { JointType.HandLeft, JointType.ThumbLeft, JointType.HandTipLeft };
 	
-		public static readonly JointType[] handRight = { JointType.HandRight, JointType.ThumbLeft, JointType.HandTipLeft };
+		public static readonly JointType[] handRight = { JointType.HandRight, JointType.ThumbRight, JointType.HandTipRight };
 	}
 }

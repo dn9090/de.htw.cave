@@ -17,10 +17,8 @@ namespace Htw.Cave.Kinect
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Actor")]
 	public sealed class KinectActor : MonoBehaviour
 	{
-		public event Action<KinectTrackable> onTrack;
-
-		public event Action<KinectTrackable> onUntrack;
-
+		public event Action onTrackingDataUpdated;
+	
 		/// <summary>
 		/// The tracking id of the actor which corresponds to a
 		/// tracking id of a body.
@@ -28,17 +26,17 @@ namespace Htw.Cave.Kinect
 		public ulong trackingId => this.m_BodyFrame.trackingId;
 
 		/// <summary>
-		/// Gets the amount a body is leaning, which is a number between -1 (leaning left or back)
-		/// and 1 (leaning right or front).
-		/// Leaning left and right corresponds to X movement and leaning back and forward corresponds to Y movement.
-		/// </summary>
-		public UnityEngine.Vector2 lean => this.m_BodyFrame.lean;
-
-		/// <summary>
 		/// Provides the last updated body data.
 		/// </summary>
 		public KinectBodyFrame bodyFrame => this.m_BodyFrame;
 
+		/// <summary>
+		/// Gets the direction and strength a body is leaning, which is a number between -1 (leaning left or back)
+		/// and 1 (leaning right or front).
+		/// Leaning left and right corresponds to X movement and leaning back and forward corresponds to Y movement.
+		/// </summary>
+		public UnityEngine.Vector2 lean => this.m_BodyFrame.lean;
+		
 		/// <summary>
 		/// Approximation of the persons height. This is the maximum detected distance
 		/// between the head and the foot joints. Becomes more accurate the longer the person
@@ -48,24 +46,28 @@ namespace Htw.Cave.Kinect
 
 		/// <summary>
 		/// The world bounds of the actor.
+		/// Includes head, spine and foot positions.
 		/// </summary>
 		public Bounds bounds => this.m_Bounds;
+		
 
 		/// <summary>
 		/// The time at the creation of the component.
 		/// </summary>
 		public float createdAt => this.m_CreatedAt;
-
+		
 		/// <summary>
-		/// Set of objects that are tracked and updated by the actor.
+		/// The tracked joint positions and rotations in world space.
 		/// </summary>
-		public ISet<KinectTrackable> trackables => this.m_Trackables;
-
+		public KinectJoint[] joints => this.m_Joints;
+		
+		internal long updatedAtFrame;
+		
 		private KinectBodyFrame m_BodyFrame;
+		
+		private KinectJoint[] m_Joints;
 
 		private Bounds m_Bounds;
-
-		private HashSet<KinectTrackable> m_Trackables;
 
 		private float m_CreatedAt;
 
@@ -73,73 +75,50 @@ namespace Htw.Cave.Kinect
 
 		public void Awake()
 		{
-			this.m_BodyFrame = KinectBodyFrame.Create();
-			this.m_Trackables = new HashSet<KinectTrackable>();
+			this.m_BodyFrame = new KinectBodyFrame();
+			this.m_Joints = new KinectJoint[KinectHelper.jointTypeCount];
 			this.m_CreatedAt = Time.time;
 		}
+		
+		public KinectJoint GetJoint(JointType jointType) => this.m_Joints[(int)jointType];
 
-		internal void UpdateTrackingData(Body body, FaceFrameResult face, UnityEngine.Vector4 floorClipPlane)
+		internal void OnUpdateTrackingData(KinectManager manager, Body body, FaceFrameResult face, long frame)
 		{
-			transform.localPosition = Vector3.zero;
-
-			this.m_BodyFrame.RefreshFrameData(body, face, floorClipPlane);
-
-			RecalculateBounds();
-
-			// Compensation because the head joint is in the middle of the head.
-			this.m_Height = Mathf.Max(this.m_Height, this.m_Bounds.size.y + 0.1f); 
-
-			foreach(var trackable in this.m_Trackables)
-				trackable.UpdateTrackingData(ref this.m_BodyFrame, ref this.m_Bounds);
+			this.updatedAtFrame = frame;
+			this.m_BodyFrame.RefreshFrameData(body, face, manager.floorClipPlane);
 			
-			Vector3 center = new Vector3(this.m_Bounds.center.x, 0f, this.m_Bounds.center.z);
-			Vector3 translation = center - transform.position;
-			transform.position = center;
+			KinectJoint.TransformJointData(this.m_BodyFrame.joints, this.m_Joints, manager.transform);
 
-			for(int i = 0; i < transform.childCount; ++i)
-				transform.GetChild(i).position -= translation;
+			RecalculatePositionAndBounds();
+
+			this.onTrackingDataUpdated?.Invoke();
 		}
 
-		internal void Track(KinectTrackable trackable)
-		{
-			if(this.m_Trackables.Contains(trackable))
-				return;
-			
-			this.m_Trackables.Add(trackable);
-			this.onTrack?.Invoke(trackable);
-		}
+		private void RecalculatePositionAndBounds()
+		{		
+			var joint = GetJoint(JointType.SpineBase);
 
-		internal void Untrack(KinectTrackable trackable)
-		{
-			if(!this.m_Trackables.Contains(trackable))
-				return;
-			
-			this.m_Trackables.Remove(trackable);
-			this.onUntrack?.Invoke(trackable);
-		}
-
-		private void RecalculateBounds()
-		{
-			var joint = this.m_BodyFrame[JointType.SpineBase];
+			transform.position = joint.position;
 
 			this.m_Bounds = new Bounds(joint.position, Vector3.zero);
 		
-			joint = this.m_BodyFrame[JointType.Head];
+			joint = GetJoint(JointType.Head);
 
 			if(joint.trackingState != TrackingState.NotTracked)
 				this.m_Bounds.Encapsulate(joint.position);
 			
-			joint = this.m_BodyFrame[JointType.FootLeft];
+			joint = GetJoint(JointType.FootLeft);
 		
 			if(joint.trackingState != TrackingState.NotTracked)
 				this.m_Bounds.Encapsulate(joint.position);
 
-			joint = this.m_BodyFrame[JointType.FootRight];
+			joint = GetJoint(JointType.FootRight);
 
 			if(joint.trackingState != TrackingState.NotTracked)
 				this.m_Bounds.Encapsulate(joint.position);
-		
-			this.m_Bounds.center = transform.TransformPoint(this.m_Bounds.center);
+			
+			// Compensation because the head joint is in the middle of the head.
+			this.m_Height = Mathf.Max(this.m_Height, this.m_Bounds.size.y + 0.1f);
 		}
 	}
 }

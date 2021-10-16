@@ -9,9 +9,6 @@ using Htw.Cave.Kinect.Utils;
 
 namespace Htw.Cave.Kinect
 {
-	// @Readme: For disconnecting issues: https://social.msdn.microsoft.com/Forums/sqlserver/en-US/bcd775ef-64b0-4e94-8d26-ce297d6d60ea/kinect-v2-keeps-disconnecting-after-every-10-seconds-on-windows-10-1903?forum=kinectv2sdk
-	// If the Kinect v2 is not recognized: https://skarredghost.com/2018/03/01/fix-kinect-v2-not-working-windows-10-creators-update/
-
 	public enum FaceFrameFeatureType
 	{
 		Required,
@@ -25,8 +22,6 @@ namespace Htw.Cave.Kinect
 	[AddComponentMenu("Htw.Cave/Kinect/Kinect Manager")]
 	public sealed class KinectManager : MonoBehaviour
 	{
-		private const float FrameTime = 0.33f; // A bit less than 30 FPS.
-
 		public event Action onSensorOpen;
 
 		public event Action onSensorClose;
@@ -76,9 +71,9 @@ namespace Htw.Cave.Kinect
 
 		private Stopwatch m_Stopwatch;
 
-		private long m_Frame;
+		private int m_BodyCount;
 
-		private int m_TrackedBodyCount;
+		private long m_Frame;
 
 		public void Start()
 		{
@@ -89,7 +84,7 @@ namespace Htw.Cave.Kinect
 				this.m_Sensor = KinectSensor.GetDefault();
 			} catch {
 #if UNITY_EDITOR
-				UnityEngine.Debug.LogError("The Kinect v2 SDK was not properly installed.");
+				UnityEngine.Debug.LogError("The Kinect v2 SDK was not installed properly.");
 #endif
 				this.m_Sensor = null;
 			}
@@ -122,17 +117,17 @@ namespace Htw.Cave.Kinect
 
 		public long AcquireFrames(out Body[] bodies, out FaceFrameResult[] faceFrames, out int bodyCount)
 		{
-			if(this.m_Stopwatch.ElapsedMilliseconds > FrameTime)
+			if(this.m_Stopwatch.ElapsedMilliseconds > KinectHelper.frameTime)
 			{
 				AcquireBodyFrames();
 				AcquireFaceFrames();
 				
 				this.m_Stopwatch.Restart();
 			}
-
+			
 			bodies = this.m_Bodies;
+			bodyCount = this.m_BodyCount;
 			faceFrames = this.m_FaceFrameResults;
-			bodyCount = this.m_TrackedBodyCount;
 
 			return this.m_Frame;
 		}
@@ -145,22 +140,24 @@ namespace Htw.Cave.Kinect
 			this.m_Stopwatch.Restart();
 
 			bodies = this.m_Bodies;
+			bodyCount = this.m_BodyCount;
 			faceFrames = this.m_FaceFrameResults;
-			bodyCount = this.m_TrackedBodyCount;
 
 			return this.m_Frame;
 		}
+		
+		public bool IsSensorOpen() => this.m_Sensor.IsOpen;
 
 		private void OpenSensor()
 		{
-			if(!this.m_Sensor.IsOpen)
+			if(!IsSensorOpen())
 				this.m_Sensor.Open();
 			this.m_Stopwatch.Start();
 		}
 
 		private void CloseSensor()
 		{
-			if(this.m_Sensor.IsOpen)
+			if(IsSensorOpen())
 				this.m_Sensor.Close();
 
 			this.m_Stopwatch.Stop();
@@ -204,15 +201,28 @@ namespace Htw.Cave.Kinect
 			{
 				if(bodyFrame != null && bodyFrame.RelativeTime > this.m_RelativeTime)
 				{
-					// @Optimize: Read the book and look for additional info on the
-					// guarantees of GetAndRefreshBodyData. Maybe it is possible
-					// to skip the sorting completely.
 					bodyFrame.GetAndRefreshBodyData(this.m_Bodies);
+					
+					this.m_BodyCount = 0;
+					
+					// Count tracked bodies and move them to the
+					// start of the array.
+					for(int i = 0, j = this.m_Bodies.Length - 1; i < this.m_Bodies.Length && i < j; ++i)
+					{
+						if(this.m_Bodies[i] == null || !this.m_Bodies[i].GetIsTrackedFast())
+						{
+							var temp = this.m_Bodies[i];
+							this.m_Bodies[i--] = this.m_Bodies[j];
+							this.m_Bodies[j--] = temp;
+							continue;
+						} 
+							
+						++this.m_BodyCount;
+					}
 
-					this.m_TrackedBodyCount = BodyHelper.SortAndCount(this.m_Bodies);
 					this.m_RelativeTime = bodyFrame.RelativeTime;
 					this.m_FloorClipPlane = bodyFrame.FloorClipPlane;
-					this.m_Frame += 1;
+					++this.m_Frame;
 				}
 			}
 
@@ -224,9 +234,9 @@ namespace Htw.Cave.Kinect
 
 		private void AcquireFaceFrames()
 		{
-			for(int i = 0; i < this.m_TrackedBodyCount; ++i)
+			for(int i = 0; i < this.m_BodyCount; ++i)
 			{
-				this.m_FaceFrameSources[i].TrackingId = this.m_Bodies[i].TrackingId;
+				this.m_FaceFrameSources[i].TrackingId = this.m_Bodies[i].GetTrackingIdFast();
 
 				using(FaceFrame faceFrame = this.m_FaceFrameReaders[i].AcquireLatestFrame())
 				{

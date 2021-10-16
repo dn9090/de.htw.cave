@@ -21,19 +21,18 @@ namespace Htw.Cave.Kinect.Utils
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UnityEngine.Quaternion ToUnityQuaternion(this Windows.Kinect.Vector4 vector) =>
 			new UnityEngine.Quaternion(vector.X, vector.Y, vector.Z, vector.W);
-
+		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsZero(this UnityEngine.Quaternion quaternion) =>
-			(quaternion.x + quaternion.y + quaternion.z + quaternion.w) == 0f;
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsZero(this UnityEngine.Vector3 vector) =>
-			(vector.x + vector.y + vector.z) == 0f;
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsZero(this UnityEngine.Vector4 vector) =>
-			(vector.x + vector.y + vector.z + vector.w) == 0f;
-
+		public static bool IsZero(this Quaternion quaternion)
+		{
+			var sqrMagnitude = quaternion.x * quaternion.x
+			                 + quaternion.y * quaternion.y
+							 + quaternion.z * quaternion.z
+							 + quaternion.w * quaternion.w;
+		
+			return Mathf.Approximately(sqrMagnitude, 0f);
+		}	
+		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UnityEngine.Vector2 GetLeanDirection(this Body body)
 		{

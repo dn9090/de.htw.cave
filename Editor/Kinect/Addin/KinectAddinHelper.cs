@@ -17,7 +17,7 @@ namespace Htw.Cave.Kinect.Addin
 
 		public static readonly string[] kinectPluginDirNames = { "Metro", "x86", "x86_64" };
 
-		public static readonly string kinectPluginPath = "ThirdParty/Kinect/" + pluginsDirName;
+		public static readonly string kinectPluginPath = Path.Combine("Kinect", pluginsDirName);
 
 		public static DirectoryInfo[] PluginDirs(DirectoryInfo source) =>
 			kinectPluginDirNames.Select(dir => new DirectoryInfo(Path.Combine(source.FullName, dir))).ToArray();

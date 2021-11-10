@@ -9,7 +9,9 @@ namespace Htw.Cave.Kinect.Addin
 {
 	public static class KinectAddinHelper
 	{
-		public static string packagePath = "Packages" + Path.DirectorySeparatorChar + "de.htw.cave";
+		public static string packageName = "de.htw.cave";
+
+		public static string packagesDir = Path.Combine(Application.dataPath, "..", "Packages");
 
 		public static string pluginsDirName = "Plugins";
 
@@ -17,15 +19,12 @@ namespace Htw.Cave.Kinect.Addin
 
 		public static readonly string kinectPluginPath = "ThirdParty/Kinect/" + pluginsDirName;
 
-		public static DirectoryInfo[] PluginDirs(DirectoryInfo source)
-		{
-			return kinectPluginDirNames.Select(dir => new DirectoryInfo(Path.Combine(source.FullName, dir))).ToArray();
-		}
+		public static DirectoryInfo[] PluginDirs(DirectoryInfo source) =>
+			kinectPluginDirNames.Select(dir => new DirectoryInfo(Path.Combine(source.FullName, dir))).ToArray();
 
 		public static bool IsPluginInAssets()
 		{
-			char separator = Path.DirectorySeparatorChar;
-			string targetDir = Application.dataPath + separator + pluginsDirName;
+			string targetDir = Path.Combine(Application.dataPath, pluginsDirName);
 			return PluginDirs(new DirectoryInfo(targetDir)).Any(dir => dir.Exists);
 		}
 
@@ -40,7 +39,11 @@ namespace Htw.Cave.Kinect.Addin
 
 		public static void MovePluginsToAssets()
 		{
-			string packageDir = Path.Combine(Application.dataPath, "..", packagePath);
+			string packageDir = FindPackageDirectory(packagesDir);
+
+			if(packageDir == null)
+				throw PackageDirectoryNotFoundException();
+
 			string kinectDir = Path.Combine(packageDir, kinectPluginPath);
 			string targetDir = Path.Combine(Application.dataPath, pluginsDirName);
 
@@ -53,7 +56,11 @@ namespace Htw.Cave.Kinect.Addin
 
 		public static void MovePluginsToPackage()
 		{
-			string packageDir = Path.Combine(Application.dataPath, "..", packagePath);
+			string packageDir = FindPackageDirectory(packagesDir);
+
+			if(packageDir == null)
+				throw PackageDirectoryNotFoundException();
+
 			string kinectDir = Path.Combine(packageDir, kinectPluginPath);
 			string targetDir = Path.Combine(Application.dataPath, pluginsDirName);
 
@@ -70,6 +77,23 @@ namespace Htw.Cave.Kinect.Addin
 		public static void Import()
 		{
 			AssetDatabase.Refresh();
+		}
+
+		public static string FindPackageDirectory(string path)
+		{
+			// Version control systems add the branch name to the package name sometimes.
+			// So if the package cannot be found look for the substring.
+			
+			var packageDir = new DirectoryInfo(Path.Combine(path, packageName));
+
+			if(packageDir.Exists)
+				return packageDir.FullName;
+
+			foreach(var dir in Directory.GetDirectories(path))
+				if(Path.GetDirectoryName(dir).Contains(packageName))
+					return dir;
+			
+			return null;
 		}
 
 		public static void FixBuildPluginSubdirectory(string executable, BuildTarget target)
@@ -98,5 +122,9 @@ namespace Htw.Cave.Kinect.Addin
 				return; // Nothing to fix...
 			}
 		}
+
+		public static DirectoryNotFoundException PackageDirectoryNotFoundException() =>
+			new DirectoryNotFoundException("Unable to locate the package directory containing the Kinect Addin. "
+				+ "Make sure that the package is located inside the Packages/ folder.");
 	}
 }

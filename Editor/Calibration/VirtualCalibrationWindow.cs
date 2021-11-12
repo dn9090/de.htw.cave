@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEngine;
 using UnityEditor;
 
@@ -14,7 +15,7 @@ namespace Htw.Cave.Calibration
 			window.minSize = new Vector2(500f, 250f);
 		}
 
-		public static string defaultFolder => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+		public static string defaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
 		private VirtualCalibratorClient m_Client;
 
@@ -40,6 +41,12 @@ namespace Htw.Cave.Calibration
 			return Resources.Load<Texture2D>("Icons/" + name);
 		}
 
+		private static void RememberFolderOfFile(string file)
+		{
+			if(!string.IsNullOrEmpty(file))
+				defaultFolder = Path.GetDirectoryName(file);
+		}
+
 		public void OnEnable()
 		{
 			this.m_Client = new VirtualCalibratorClient();
@@ -60,10 +67,8 @@ namespace Htw.Cave.Calibration
 
 		public void OnGUI()
 		{
-			if(this.m_Client.HasStatus(VirtualCalibratorClient.Status.Connected))
+			if(this.m_Client.Refresh())
 			{
-				this.m_Client.Refresh();
-				
 				OnToolbarGUI();
 				OnCalibrationGUI();
 
@@ -118,20 +123,22 @@ namespace Htw.Cave.Calibration
 			CalibrationGUILayout.BeginToolbar();
 
 			EditorGUILayout.LabelField("Cameras", EditorStyles.miniLabel, GUILayout.Width(170f));
-			GUILayout.Space(1f);
-			EditorGUILayout.LabelField("Displays", EditorStyles.miniLabel, GUILayout.Width(60f));
+			GUILayout.Space(5f);
+			EditorGUILayout.LabelField("Displays", EditorStyles.miniLabel, GUILayout.Width(56f));
 			
 			if(CalibrationGUILayout.ToolbarButton("Load", 120f))
 			{
-				var file = EditorUtility.OpenFilePanel("Load Calibration", defaultFolder, ".json");
+				var file = EditorUtility.OpenFilePanel("Load Calibration", defaultFolder, "json");
 				this.m_Client.Load(file);
+				RememberFolderOfFile(file);
 			}
 
 			if(CalibrationGUILayout.ToolbarButton("Save As", 120f))
 			{
 				var file = EditorUtility.SaveFilePanel("Save Calibration", defaultFolder,
-					"calibration-" + DateTime.Now.ToString("yyyy-MM-dd"), ".json");
+					"calibration-" + DateTime.Now.ToString("yyyy-MM-dd"), "json");
 				this.m_Client.Save(file);
+				RememberFolderOfFile(file);
 			}
 			
 			EditorGUILayout.Space();

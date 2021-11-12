@@ -58,10 +58,17 @@ namespace Htw.Cave.Calibration
 
 		public bool HasStatus(Status status) => this.status.HasFlag(status);
 
-		public void Refresh()
+		public bool Refresh()
 		{
-			while(this.m_Client.messageQueue.TryDequeue(out SimpleTcpMessage message))
-				Execute(message);
+			if(HasStatus(VirtualCalibratorClient.Status.Connected))
+			{
+				while(this.m_Client.messageQueue.TryDequeue(out SimpleTcpMessage message))
+					Execute(message);
+				
+				return true;
+			}
+
+			return false;
 		}
 
 		public void LocalConnect() => Connect(VirtualCalibrator.localhost, false);
@@ -141,6 +148,9 @@ namespace Htw.Cave.Calibration
 		{
 			switch(message.type)
 			{
+				case VirtualCalibrator.Message.Disconnect:
+					Disconnect();
+					break;
 				case VirtualCalibrator.Message.Calibration:
 					this.package = JsonUtility.FromJson<VirtualCalibrator.Package>(message.GetString());
 					this.m_Status |= Status.Initialized;

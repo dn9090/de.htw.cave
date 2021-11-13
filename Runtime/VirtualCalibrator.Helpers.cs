@@ -117,6 +117,8 @@ namespace Htw.Cave
 				var color = colors[i % colors.Length];
 				
 				CreateScreenTextHelper(screens[i], root.transform, color);
+				CreateHorizontalLineHelper(screens[i], root.transform, color);
+				CreateVerticalLineHelper(screens[i], root.transform, color);
 				CreateCubeDistanceHelper(screens[i], root.transform, color);
 			
 				var topLeft = new Vector3(screens[i].width * -0.5f, screens[i].height * 0.5f);
@@ -144,7 +146,7 @@ namespace Htw.Cave
 			text.fontSize = 28;
 			text.characterSize = 0.04f * screen.width;
 			text.transform.parent = parent;
-			text.transform.position = screen.transform.TransformPoint(Vector3.up * screen.height * 0.3f + Vector3.forward);
+			text.transform.position = screen.transform.TransformPoint(Vector3.up * screen.height * 0.25f + Vector3.forward);
 			text.transform.rotation = screen.transform.rotation;
 		}
 		
@@ -167,6 +169,50 @@ namespace Htw.Cave
 			quad.transform.position = screen.transform.TransformPoint(position + new Vector3(offsetX, offsetY, 0f));
 			quad.transform.rotation = screen.transform.rotation;
 			quad.transform.parent = parent;
+		}
+
+		private void CreateHorizontalLineHelper(VirtualScreen screen,  Transform parent, Color color)
+		{
+			var line = GameObject.CreatePrimitive(PrimitiveType.Quad);
+			line.transform.localScale = new Vector3(screen.width * 0.8f, 0.05f, 1f);
+
+			var renderer = line.GetComponent<MeshRenderer>();
+			renderer.material = this.m_HelperMaterial;
+			renderer.material.color = color;
+
+			line.name = "Virtual Horizontal Line Helper";
+			line.transform.position = screen.transform.TransformPoint(new Vector3(0f, screen.height * 0.4f, 1.25f));
+			line.transform.rotation = screen.transform.rotation;
+			line.transform.parent = parent;
+
+			line = Instantiate(line);
+
+			line.name = "Virtual Horizontal Line Helper";
+			line.transform.position = screen.transform.TransformPoint(new Vector3(0f, screen.height * -0.4f, 1.25f));
+			line.transform.rotation = screen.transform.rotation;
+			line.transform.parent = parent;
+		}
+
+		private void CreateVerticalLineHelper(VirtualScreen screen,  Transform parent, Color color)
+		{
+			var line = GameObject.CreatePrimitive(PrimitiveType.Quad);
+			line.transform.localScale = new Vector3(0.05f, screen.height * 0.8f, 1f);
+
+			var renderer = line.GetComponent<MeshRenderer>();
+			renderer.material = this.m_HelperMaterial;
+			renderer.material.color = color;
+
+			line.name = "Virtual Horizontal Line Helper";
+			line.transform.position = screen.transform.TransformPoint(new Vector3(screen.width * 0.4f, 0f, 1.25f));
+			line.transform.rotation = screen.transform.rotation;
+			line.transform.parent = parent;
+
+			line = Instantiate(line);
+
+			line.name = "Virtual Horizontal Line Helper";
+			line.transform.position = screen.transform.TransformPoint(new Vector3(screen.width * -0.4f, 0f, 1.25f));
+			line.transform.rotation = screen.transform.rotation;
+			line.transform.parent = parent;
 		}
 		
 		private void CreateCubeDistanceHelper(VirtualScreen screen, Transform parent, Color color)
